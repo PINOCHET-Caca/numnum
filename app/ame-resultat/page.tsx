@@ -221,12 +221,12 @@ Alors, êtes-vous curieux de savoir ce que révèle votre nombre de l'âme ?`
         // Avant le début du problème - décalage minimal
         decalage = 0
       } else if (isInProblemSection) {
-        // Dans la section problématique - décalage négatif plus important
-        // Décalage fixe plus important pour toute la section problématique
-        decalage = -1.2
+        // Dans la section problématique - décalage négatif beaucoup plus important
+        // Décalage fixe très important pour toute la section problématique
+        decalage = -2.0
       } else if (isAfterProblemEnd) {
-        // Après la fin du problème - décalage léger
-        decalage = -0.5
+        // Après la fin du problème - décalage plus important
+        decalage = -1.0
       }
 
       // Calculer le début et la fin avec le décalage approprié
@@ -250,8 +250,8 @@ Alors, êtes-vous curieux de savoir ce que révèle votre nombre de l'âme ?`
 
     const currentTime = mainAudioRef.current.currentTime
 
-    // Ajouter une anticipation plus importante pour la vérification
-    const lookAheadTime = currentTime + 0.2 // Anticipation de 200ms
+    // Ajouter une anticipation beaucoup plus importante pour la vérification
+    const lookAheadTime = currentTime + 0.5 // Anticipation de 500ms
 
     // Trouver le sous-titre correspondant au temps actuel ou imminent
     for (let i = 0; i < sousTitresInfoRef.current.length; i++) {
@@ -323,8 +323,8 @@ Alors, êtes-vous curieux de savoir ce que révèle votre nombre de l'âme ?`
         console.log("Informations de sous-titres préparées:", sousTitresInfoRef.current)
       }
 
-      // Configurer l'intervalle pour mettre à jour les sous-titres avec une fréquence élevée
-      updateIntervalRef.current = setInterval(updateSousTitre, 5)
+      // Configurer l'intervalle pour mettre à jour les sous-titres avec une fréquence très élevée
+      updateIntervalRef.current = setInterval(updateSousTitre, 1) // Vérification toutes les millisecondes
 
       // Configurer l'événement de fin
       audio.onended = () => {
