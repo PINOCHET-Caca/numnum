@@ -130,24 +130,24 @@ export function NumerologyTableAme({ name, onComplete, delay = 0, forceRender = 
     timeoutsRef.current.push(highlightVowelsTimeout)
 
     // PHASE 3: Afficher l'équation avec les voyelles
-    const equationTimeout = setTimeout(
-      () => {
-        console.log("Showing equation")
-        setShowEquation(true)
-      },
-      delay + 1500 * validLetters.length + 3000, // Attendre 3 secondes après la dernière lettre
-    )
-    timeoutsRef.current.push(equationTimeout)
+    // const equationTimeout = setTimeout(
+    //   () => {
+    //     console.log("Showing equation")
+    //     setShowEquation(true)
+    //   },
+    //   delay + 1500 * validLetters.length + 3000, // Attendre 3 secondes après la dernière lettre
+    // )
+    // timeoutsRef.current.push(equationTimeout)
 
     // PHASE 4: Afficher le résultat final
-    const resultTimeout = setTimeout(
-      () => {
-        console.log("Showing result")
-        setShowResult(true)
-      },
-      delay + 1500 * validLetters.length + 4500, // Attendre 4.5 secondes après la dernière lettre
-    )
-    timeoutsRef.current.push(resultTimeout)
+    // const resultTimeout = setTimeout(
+    //   () => {
+    //     console.log("Showing result")
+    //     setShowResult(true)
+    //   },
+    //   delay + 1500 * validLetters.length + 4500, // Attendre 4.5 secondes après la dernière lettre
+    // )
+    // timeoutsRef.current.push(resultTimeout)
 
     // PHASE 5: Animation terminée
     const completeTimeout = setTimeout(
@@ -336,7 +336,7 @@ export function NumerologyTableAme({ name, onComplete, delay = 0, forceRender = 
       </div>
 
       {/* Affichage de l'équation avec uniquement les voyelles */}
-      {showEquation && (
+      {/* {showEquation && (
         <motion.div
           className="mt-8 text-center"
           initial={{ opacity: 0, y: 20 }}
@@ -365,10 +365,10 @@ export function NumerologyTableAme({ name, onComplete, delay = 0, forceRender = 
             </motion.span>
           </div>
         </motion.div>
-      )}
+      )} */}
 
       {/* Affichage du résultat final */}
-      {showResult && (
+      {/* {showResult && (
         <motion.div
           className="mt-8"
           initial={{ opacity: 0, scale: 0.5 }}
@@ -390,7 +390,7 @@ export function NumerologyTableAme({ name, onComplete, delay = 0, forceRender = 
             {sum}
           </motion.div>
         </motion.div>
-      )}
+      )} */}
     </div>
   )
 }
