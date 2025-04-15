@@ -98,68 +98,6 @@ export function VowelsAnimation({ name }: VowelsAnimationProps) {
           )
         })}
       </div>
-
-      {/* Affichage de l'équation avec uniquement les voyelles */}
-      <motion.div
-        className="mt-4 text-center"
-        initial={{ opacity: 0, y: 20 }}
-        animate={{ opacity: 1, y: 0 }}
-        transition={{ duration: 0.8, delay: 0.5 }}
-      >
-        <div className="text-xl sm:text-2xl font-bold text-white">
-          {validChars
-            .filter((char) => isVowel(char))
-            .map((vowel, index) => {
-              const value = letterToNumber[vowel] || 0
-              return (
-                <motion.span
-                  key={index}
-                  initial={{ opacity: 0, scale: 0.8 }}
-                  animate={{ opacity: 1, scale: 1 }}
-                  transition={{ delay: index * 0.2, duration: 0.5 }}
-                >
-                  {index > 0 && <span className="text-teal-400 mx-1 sm:mx-2">+</span>}
-                  <span className="text-white">{value}</span>
-                </motion.span>
-              )
-            })}
-          <motion.span initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ delay: 1.5, duration: 0.5 }}>
-            <span className="text-teal-400 mx-1 sm:mx-2">=</span>
-            <span className="text-yellow-300 text-2xl sm:text-3xl">
-              {validChars.filter((char) => isVowel(char)).reduce((sum, vowel) => sum + (letterToNumber[vowel] || 0), 0)}
-            </span>
-          </motion.span>
-        </div>
-      </motion.div>
-
-      {/* Résultat final */}
-      <motion.div
-        className="mt-8"
-        initial={{ opacity: 0, scale: 0.5 }}
-        animate={{ opacity: visible ? 1 : 0, scale: visible ? 1 : 0.5 }}
-        transition={{
-          duration: 0.8,
-          delay: validChars.length * 0.1 + 2,
-          type: "spring",
-          stiffness: 120,
-          damping: 8,
-        }}
-      >
-        <motion.div
-          className="text-6xl sm:text-8xl font-bold text-white bg-gradient-to-r from-purple-500 to-purple-700 px-8 py-6 rounded-lg"
-          animate={{
-            boxShadow: [
-              "0 0 20px rgba(147, 51, 234, 0.3)",
-              "0 0 40px rgba(147, 51, 234, 0.6)",
-              "0 0 20px rgba(147, 51, 234, 0.3)",
-            ],
-          }}
-          transition={{ duration: 2, repeat: Number.POSITIVE_INFINITY, repeatType: "reverse" }}
-          style={{ textShadow: "0 0 20px rgba(255, 255, 255, 0.7), 0 0 40px rgba(255, 255, 255, 0.4)" }}
-        >
-          {validChars.filter((char) => isVowel(char)).reduce((sum, vowel) => sum + (letterToNumber[vowel] || 0), 0)}
-        </motion.div>
-      </motion.div>
     </div>
   )
 }
