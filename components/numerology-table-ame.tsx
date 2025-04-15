@@ -48,7 +48,7 @@ const isVowel = (letter: string): boolean => {
 export function NumerologyTableAme({ name, onComplete, delay = 0, forceRender = false }: NumerologyTableAmeProps) {
   // États pour les animations
   const [activeLetterIndex, setActiveLetterIndex] = useState(-1)
-  const [displayedLetterIndex, setDisplayedLetterIndex] = useState(-1)
+  const [displayedLetterIndices, setDisplayedLetterIndices] = useState<number[]>([])
   const [highlightVowels, setHighlightVowels] = useState(false)
   const [showEquation, setShowEquation] = useState(false)
   const [showResult, setShowResult] = useState(false)
@@ -112,7 +112,7 @@ export function NumerologyTableAme({ name, onComplete, delay = 0, forceRender = 
       const displayTimeout = setTimeout(
         () => {
           console.log(`Displaying letter ${letter} at index ${index}`)
-          setDisplayedLetterIndex(index)
+          setDisplayedLetterIndices((prev) => [...prev, index])
         },
         delay + 1500 * index + 500, // Afficher 0.5 seconde après la mise en évidence
       )
@@ -174,7 +174,7 @@ export function NumerologyTableAme({ name, onComplete, delay = 0, forceRender = 
 
     // Réinitialiser les états
     setActiveLetterIndex(-1)
-    setDisplayedLetterIndex(-1)
+    setDisplayedLetterIndices([])
     setHighlightVowels(false)
     setShowEquation(false)
     setShowResult(false)
@@ -208,13 +208,22 @@ export function NumerologyTableAme({ name, onComplete, delay = 0, forceRender = 
   // Fonction pour déterminer si une cellule doit être mise en évidence
   const isCellHighlighted = (letter: string) => {
     if (activeLetterIndex < 0 || activeLetterIndex >= validLetters.length) return false
+    // Vérifier uniquement si la lettre actuelle correspond à la lettre active
     return letter === validLetters[activeLetterIndex]
   }
 
   // Fonction pour déterminer si une cellule a déjà été mise en évidence
   const isCellPreviouslyHighlighted = (letter: string) => {
     if (activeLetterIndex < 0) return false
-    return validLetters.slice(0, activeLetterIndex).includes(letter)
+
+    // Vérifier si la lettre apparaît dans les lettres précédemment activées
+    // mais uniquement aux positions précédentes, pas toutes les occurrences
+    for (let i = 0; i < activeLetterIndex; i++) {
+      if (validLetters[i] === letter) {
+        return true
+      }
+    }
+    return false
   }
 
   // Fonction pour déterminer la classe CSS d'une cellule du tableau
@@ -235,6 +244,17 @@ export function NumerologyTableAme({ name, onComplete, delay = 0, forceRender = 
     }
 
     return "bg-black/80 text-white" // Lettres non mises en évidence en noir
+  }
+
+  // Fonction pour vérifier si une lettre spécifique à une position spécifique est affichée
+  const isLetterDisplayed = (index: number) => {
+    return displayedLetterIndices.includes(index)
+  }
+
+  // Fonction pour vérifier si une lettre est la dernière affichée
+  const isLatestDisplayed = (index: number) => {
+    if (displayedLetterIndices.length === 0) return false
+    return index === displayedLetterIndices[displayedLetterIndices.length - 1]
   }
 
   return (
@@ -281,9 +301,12 @@ export function NumerologyTableAme({ name, onComplete, delay = 0, forceRender = 
           }
 
           // Trouver l'index de cette lettre dans validLetters (sans les espaces)
-          const letterIndex = validLetters.indexOf(char, validLetters.slice(0, index).filter((l) => l === char).length)
-          const isDisplayed = letterIndex <= displayedLetterIndex
-          const isLatestDisplayed = letterIndex === displayedLetterIndex
+          // Calculer l'index réel dans validLetters en comptant les lettres précédentes (sans les espaces)
+          const letterIndex = validChars.slice(0, index).filter((c) => /[A-Z]/.test(c)).length
+
+          // Vérifier si cette lettre est affichée et si c'est la dernière affichée
+          const isDisplayed = isLetterDisplayed(letterIndex)
+          const isLatest = isLatestDisplayed(letterIndex)
 
           return (
             <motion.div
@@ -300,7 +323,7 @@ export function NumerologyTableAme({ name, onComplete, delay = 0, forceRender = 
                 isDisplayed
                   ? {
                       opacity: 1,
-                      scale: isLatestDisplayed ? [1, 1.2, 1] : 1,
+                      scale: isLatest ? [1, 1.2, 1] : 1,
                       transition: { duration: 0.5 },
                     }
                   : { opacity: 0, scale: 0.8 }
