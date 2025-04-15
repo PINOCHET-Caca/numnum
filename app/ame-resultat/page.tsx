@@ -219,19 +219,14 @@ Alors, êtes-vous curieux de savoir ce que révèle votre nombre de l'âme ?`
         decalage = 0
       } else if (isBeforeProblemStart) {
         // Avant le début du problème - décalage minimal
-        decalage = 0.1
+        decalage = 0
       } else if (isInProblemSection) {
-        // Dans la section problématique - décalage négatif modéré
-        // Plus on avance dans la section problématique, plus le décalage est important
-        const progressInProblemSection =
-          (charCount - positionPhraseCleSynchronisation) /
-          (positionPhraseFinProbleme - positionPhraseCleSynchronisation)
-
-        // Décalage négatif modéré, de -0.5s à -0.8s
-        decalage = -0.5 - progressInProblemSection * 0.3
+        // Dans la section problématique - décalage négatif plus important
+        // Décalage fixe plus important pour toute la section problématique
+        decalage = -1.2
       } else if (isAfterProblemEnd) {
         // Après la fin du problème - décalage léger
-        decalage = -0.3
+        decalage = -0.5
       }
 
       // Calculer le début et la fin avec le décalage approprié
@@ -255,8 +250,8 @@ Alors, êtes-vous curieux de savoir ce que révèle votre nombre de l'âme ?`
 
     const currentTime = mainAudioRef.current.currentTime
 
-    // Ajouter une anticipation supplémentaire pour la vérification
-    const lookAheadTime = currentTime + 0.1 // Anticipation de base de 100ms
+    // Ajouter une anticipation plus importante pour la vérification
+    const lookAheadTime = currentTime + 0.2 // Anticipation de 200ms
 
     // Trouver le sous-titre correspondant au temps actuel ou imminent
     for (let i = 0; i < sousTitresInfoRef.current.length; i++) {
@@ -287,13 +282,25 @@ Alors, êtes-vous curieux de savoir ce que révèle votre nombre de l'âme ?`
       // Créer un nouvel élément audio
       const audio = new Audio()
 
+      // Définir la priorité de chargement élevée
+      audio.preload = "auto"
+
       // Définir la source avec le texte complet
-      audio.src = `/api/speech?text=${encodeURIComponent(texteNarrationComplet)}&t=${Date.now()}`
+      audio.src = `/api/speech?text=${encodeURIComponent(texteNarrationComplet)}&t=${Date.now()}&priority=high`
 
       // Stocker l'élément audio dans la référence
       mainAudioRef.current = audio
 
-      // Attendre que les métadonnées soient chargées
+      // Commencer à jouer dès que possible, sans attendre le chargement complet
+      const playPromise = audio.play().catch((e) => {
+        console.error("Erreur lors de la lecture initiale:", e)
+        // Réessayer après un court délai
+        setTimeout(() => {
+          audio.play().catch((err) => console.error("Erreur lors de la seconde tentative:", err))
+        }, 300)
+      })
+
+      // Attendre que les métadonnées soient chargées en parallèle
       await new Promise<void>((resolve) => {
         audio.addEventListener("loadedmetadata", () => {
           console.log("Audio principal chargé, durée:", audio.duration)
@@ -306,8 +313,8 @@ Alors, êtes-vous curieux de savoir ce que révèle votre nombre de l'âme ?`
           resolve() // Résoudre quand même pour continuer
         })
 
-        // Charger l'audio
-        audio.load()
+        // Définir un timeout pour résoudre même si les métadonnées ne se chargent pas
+        setTimeout(resolve, 3000)
       })
 
       // Préparer les informations de synchronisation des sous-titres
@@ -318,10 +325,6 @@ Alors, êtes-vous curieux de savoir ce que révèle votre nombre de l'âme ?`
 
       // Configurer l'intervalle pour mettre à jour les sous-titres avec une fréquence élevée
       updateIntervalRef.current = setInterval(updateSousTitre, 5)
-
-      // Jouer l'audio
-      await audio.play()
-      console.log("Lecture de l'audio principal démarrée")
 
       // Configurer l'événement de fin
       audio.onended = () => {
@@ -353,21 +356,19 @@ Alors, êtes-vous curieux de savoir ce que révèle votre nombre de l'âme ?`
         audio.play().catch((err) => {
           console.error("Erreur lors de la lecture de l'audio de fond:", err)
         })
-      }, 500)
+      }, 100)
     }
 
-    // Réduire le temps de chargement
+    // Réduire le temps de chargement et démarrer l'audio immédiatement
     setTimeout(() => {
       setIsLoading(false)
 
-      // Charger et démarrer l'audio principal après un court délai
-      setTimeout(() => {
-        if (!audioStarted) {
-          setAudioStarted(true)
-          loadAndPlayMainAudio()
-        }
-      }, 1000)
-    }, 1500)
+      // Charger et démarrer l'audio principal immédiatement
+      if (!audioStarted) {
+        setAudioStarted(true)
+        loadAndPlayMainAudio()
+      }
+    }, 500) // Réduit à 500ms au lieu de 1500ms
 
     // Nettoyage
     return () => {
