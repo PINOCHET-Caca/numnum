@@ -8,6 +8,7 @@ import { Volume2, VolumeX, InfinityIcon } from "lucide-react"
 import Image from "next/image"
 import { prenomsFeminins } from "@/utils/prenoms-feminins"
 import { NumerologyTableAme } from "@/components/numerology-table-ame"
+import { VowelsAnimation } from "@/components/vowels-animation"
 
 // Fonction pour diviser un texte en segments courts (2 lignes max) pour les sous-titres
 const diviserEnSegmentsCourts = (texte: string): string[] => {
@@ -121,6 +122,9 @@ export default function AmeResultat() {
   const [tableKey, setTableKey] = useState(0) // Clé pour forcer le rendu du tableau
   const [tableForceRender, setTableForceRender] = useState(false) // État pour forcer le rendu du tableau
   const [audioLoaded, setAudioLoaded] = useState(false)
+
+  // Ajouter un nouvel état pour contrôler l'affichage de l'animation des voyelles
+  const [showVowelsAnimation, setShowVowelsAnimation] = useState(false)
 
   // Références
   const timerRef = useRef<NodeJS.Timeout | null>(null)
@@ -269,6 +273,12 @@ Alors, êtes-vous curieux de savoir ce que révèle votre nombre de l'âme ?`
           // Forcer le rendu du tableau avec une nouvelle clé et état forceRender
           setTableKey((prev) => prev + 1)
           setTableForceRender((prev) => !prev)
+        }
+
+        // Afficher la nouvelle animation des voyelles
+        if (sousTitreInfo.texte.includes("Les voyelles, en revanche, sont prononcées avec un souffle fluide")) {
+          setShowTable(false)
+          setShowVowelsAnimation(true)
         }
 
         return
@@ -549,6 +559,18 @@ Alors, êtes-vous curieux de savoir ce que révèle votre nombre de l'âme ?`
               }}
               delay={500}
             />
+          </motion.div>
+        )}
+
+        {/* Animation des voyelles */}
+        {showVowelsAnimation && fullName && (
+          <motion.div
+            className="w-full max-w-3xl flex flex-col items-center justify-center mb-10"
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.8 }}
+          >
+            <VowelsAnimation name={fullName} />
           </motion.div>
         )}
 
