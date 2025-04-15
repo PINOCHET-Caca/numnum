@@ -269,12 +269,14 @@ Alors, êtes-vous curieux de savoir ce que révèle votre nombre de l'âme ?`
         // Afficher le tableau quand on commence à parler du nombre de l'âme
         if (sousTitreInfo.texte.includes("Je vais commencer par examiner votre nombre de l'âme")) {
           setShowCircle(false)
-          setShowTable(false) // Ne pas afficher le tableau du tout
-          setShowVowelsAnimation(true) // Afficher directement l'animation des voyelles
+          setShowTable(true)
+          // Forcer le rendu du tableau avec une nouvelle clé et état forceRender
+          setTableKey((prev) => prev + 1)
+          setTableForceRender((prev) => !prev)
         }
 
-        // Afficher la nouvelle animation des voyelles
-        if (sousTitreInfo.texte.includes("Les voyelles, en revanche, sont prononcées")) {
+        // Afficher la nouvelle animation des voyelles quand on atteint la phrase spécifique
+        if (sousTitreInfo.texte.includes("Les voyelles, en revanche, sont prononcées avec un souffle fluide")) {
           setShowTable(false)
           setShowVowelsAnimation(true)
         }

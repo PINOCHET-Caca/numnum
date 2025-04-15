@@ -1,6 +1,6 @@
 "use client"
 
-import { useState } from "react"
+import { useState, useEffect } from "react"
 import { motion } from "framer-motion"
 
 interface VowelsAnimationProps {
@@ -43,7 +43,7 @@ const isVowel = (letter: string): boolean => {
 }
 
 export function VowelsAnimation({ name }: VowelsAnimationProps) {
-  const [visible, setVisible] = useState(true) // Commencer visible immédiatement
+  const [visible, setVisible] = useState(false)
 
   // Normaliser le nom (majuscules, sans accents)
   const normalizedName = name
@@ -54,10 +54,14 @@ export function VowelsAnimation({ name }: VowelsAnimationProps) {
   // Extraire uniquement les lettres valides (A-Z) et les espaces
   const validChars = normalizedName.split("").filter((char) => /[A-Z\s]/.test(char))
 
-  // Calculer la somme des valeurs des voyelles
-  const vowelSum = validChars
-    .filter((char) => isVowel(char))
-    .reduce((sum, vowel) => sum + (letterToNumber[vowel] || 0), 0)
+  // Effet pour animer l'apparition
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      setVisible(true)
+    }, 500)
+
+    return () => clearTimeout(timer)
+  }, [])
 
   return (
     <div className="flex flex-col items-center justify-center w-full">
@@ -79,7 +83,7 @@ export function VowelsAnimation({ name }: VowelsAnimationProps) {
                 <motion.div
                   className="w-8 h-8 sm:w-10 sm:h-10 bg-white text-black flex items-center justify-center font-bold text-lg mb-1"
                   initial={{ opacity: 0, y: -10 }}
-                  animate={{ opacity: 1, y: 0 }}
+                  animate={{ opacity: visible ? 1 : 0, y: visible ? 0 : -10 }}
                   transition={{ duration: 0.5, delay: index * 0.1 }}
                 >
                   {numberValue}
@@ -94,7 +98,7 @@ export function VowelsAnimation({ name }: VowelsAnimationProps) {
                     : "bg-gray-700/50 text-gray-400"
                 } flex items-center justify-center font-bold text-lg`}
                 initial={{ opacity: 0, scale: 0.8 }}
-                animate={{ opacity: 1, scale: 1 }}
+                animate={{ opacity: visible ? 1 : 0, scale: visible ? 1 : 0.8 }}
                 transition={{ duration: 0.5, delay: index * 0.1 }}
               >
                 {char}
@@ -108,8 +112,8 @@ export function VowelsAnimation({ name }: VowelsAnimationProps) {
       <motion.div
         className="mt-4 text-center"
         initial={{ opacity: 0, y: 20 }}
-        animate={{ opacity: 1, y: 0 }}
-        transition={{ duration: 0.8, delay: 0.5 }}
+        animate={{ opacity: visible ? 1 : 0, y: visible ? 0 : 20 }}
+        transition={{ duration: 0.8, delay: validChars.length * 0.1 + 0.5 }}
       >
         <div className="text-xl sm:text-2xl font-bold text-white">
           {validChars
@@ -121,16 +125,25 @@ export function VowelsAnimation({ name }: VowelsAnimationProps) {
                   key={index}
                   initial={{ opacity: 0, scale: 0.8 }}
                   animate={{ opacity: 1, scale: 1 }}
-                  transition={{ delay: index * 0.2 + 0.8, duration: 0.5 }}
+                  transition={{ delay: index * 0.2 + validChars.length * 0.1 + 0.8, duration: 0.5 }}
                 >
                   {index > 0 && <span className="text-teal-400 mx-1 sm:mx-2">+</span>}
                   <span className="text-white">{value}</span>
                 </motion.span>
               )
             })}
-          <motion.span initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ delay: 1.5, duration: 0.5 }}>
+          <motion.span
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            transition={{
+              delay: validChars.filter((char) => isVowel(char)).length * 0.2 + validChars.length * 0.1 + 1.2,
+              duration: 0.5,
+            }}
+          >
             <span className="text-teal-400 mx-1 sm:mx-2">=</span>
-            <span className="text-yellow-300 text-2xl sm:text-3xl">{vowelSum}</span>
+            <span className="text-yellow-300 text-2xl sm:text-3xl">
+              {validChars.filter((char) => isVowel(char)).reduce((sum, vowel) => sum + (letterToNumber[vowel] || 0), 0)}
+            </span>
           </motion.span>
         </div>
       </motion.div>
@@ -139,10 +152,10 @@ export function VowelsAnimation({ name }: VowelsAnimationProps) {
       <motion.div
         className="mt-8"
         initial={{ opacity: 0, scale: 0.5 }}
-        animate={{ opacity: 1, scale: 1 }}
+        animate={{ opacity: visible ? 1 : 0, scale: visible ? 1 : 0.5 }}
         transition={{
           duration: 0.8,
-          delay: 2,
+          delay: validChars.length * 0.1 + 2,
           type: "spring",
           stiffness: 120,
           damping: 8,
@@ -160,7 +173,7 @@ export function VowelsAnimation({ name }: VowelsAnimationProps) {
           transition={{ duration: 2, repeat: Number.POSITIVE_INFINITY, repeatType: "reverse" }}
           style={{ textShadow: "0 0 20px rgba(255, 255, 255, 0.7), 0 0 40px rgba(255, 255, 255, 0.4)" }}
         >
-          {vowelSum}
+          {validChars.filter((char) => isVowel(char)).reduce((sum, vowel) => sum + (letterToNumber[vowel] || 0), 0)}
         </motion.div>
       </motion.div>
     </div>
