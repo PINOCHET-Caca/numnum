@@ -80,13 +80,13 @@ export function VowelsAnimation({ name }: VowelsAnimationProps) {
                   {numberValue}
                 </motion.div>
               )}
+              {/* Espace vide pour les consonnes pour maintenir l'alignement */}
+              {!isVowelChar && <div className="w-8 h-8 sm:w-10 sm:h-10 mb-1 opacity-0"></div>}
 
               {/* Afficher la lettre avec une couleur différente pour les voyelles */}
               <motion.div
                 className={`w-8 h-8 sm:w-10 sm:h-10 ${
-                  isVowelChar
-                    ? "bg-gradient-to-br from-pink-500 to-purple-600 text-white"
-                    : "bg-gray-700/50 text-gray-400"
+                  isVowelChar ? "bg-gradient-to-br from-pink-500 to-purple-600 text-white" : "bg-gray-700 text-gray-300"
                 } flex items-center justify-center font-bold text-lg`}
                 initial={{ opacity: 0, scale: 0.8 }}
                 animate={{ opacity: visible ? 1 : 0, scale: visible ? 1 : 0.8 }}
