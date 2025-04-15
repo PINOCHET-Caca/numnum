@@ -278,6 +278,7 @@ Alors, êtes-vous curieux de savoir ce que révèle votre nombre de l'âme ?`
         // Afficher la nouvelle animation des voyelles quand on atteint la phrase spécifique
         if (sousTitreInfo.texte.includes("Les voyelles, en revanche, sont prononcées avec un souffle fluide")) {
           setShowTable(false)
+          setShowCircle(false) // Cacher complètement le cercle
           setShowVowelsAnimation(true)
         }
 
@@ -528,11 +529,11 @@ Alors, êtes-vous curieux de savoir ce que révèle votre nombre de l'âme ?`
               name={fullName}
               forceRender={tableForceRender}
               onComplete={() => {
-                console.log("Animation du tableau terminée, passage au cercle avec nombre")
-                // Afficher le cercle avec le nombre après l'animation du tableau
-                setShowNumberInCircle(true)
+                console.log("Animation du tableau terminée, attente de la phrase clé")
+                // Ne rien faire ici, attendre la phrase clé pour passer à l'animation des voyelles
                 setShowTable(false)
-                setShowCircle(true)
+                setShowVowelsAnimation(true)
+                setShowCircle(false)
               }}
               delay={500}
             />
@@ -552,10 +553,11 @@ Alors, êtes-vous curieux de savoir ce que révèle votre nombre de l'âme ?`
               name="CACA ISSOU"
               forceRender={tableForceRender}
               onComplete={() => {
-                console.log("Animation du tableau terminée, passage au cercle avec nombre")
-                setShowNumberInCircle(true)
+                console.log("Animation du tableau terminée, attente de la phrase clé")
+                // Ne rien faire ici, attendre la phrase clé pour passer à l'animation des voyelles
                 setShowTable(false)
-                setShowCircle(true)
+                setShowVowelsAnimation(true)
+                setShowCircle(false)
               }}
               delay={500}
             />
