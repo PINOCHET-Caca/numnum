@@ -78,11 +78,13 @@ export async function GET(request: NextRequest) {
       const audioData = await response.arrayBuffer()
       console.log(`Audio généré avec succès, taille: ${audioData.byteLength} octets`)
 
-      // Retourner l'audio
+      // Retourner l'audio avec des en-têtes de cache optimisés
       return new NextResponse(audioData, {
         headers: {
           "Content-Type": "audio/mpeg",
           "Content-Length": audioData.byteLength.toString(),
+          "Cache-Control": "public, max-age=31536000", // Mettre en cache pendant un an
+          ETag: `"speech-${segment}-${text.length}"`,
         },
       })
     } catch (error) {

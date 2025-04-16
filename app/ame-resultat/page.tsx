@@ -290,7 +290,7 @@ Après avoir examiné uniquement votre chemin de vie, votre nombre d'expression 
 
 En fait, il n'y a rien que j'aimerais plus que de passer des heures à explorer chaque aspect de votre thème.
 
-Jusqu'à présent, je vous ai juste donné un bref aperçu, et bien que j'espère que ces courtes lectures vous donnent un avant-goût de qui vous êtes et de ce dont vous êtes vraiment capable, si vous vous arrêtez ici, vous partirez probablement avec plus de questions que de réponses.
+Jusqu'à présent, je vous juste donné un bref aperçu, et bien que j'espère que ces courtes lectures vous donnent un avant-goût de qui vous êtes et de ce dont vous êtes vraiment capable, si vous vous arrêtez ici, vous partirez probablement avec plus de questions que de réponses.
 
 Je ne veux rien de plus que de vous voir réussir, de vous donner la confirmation et la confiance que vous cherchez, de vous diriger sans excuses vers vos désirs les plus profonds et de manifester la vie et l'abondance que vous méritez immédiatement.
 
@@ -541,10 +541,11 @@ On se retrouve de l'autre côté.`
     }
   }, [])
 
-  // Effet pour démarrer l'audio principal
+  // Effet pour précharger et démarrer l'audio principal immédiatement
   useEffect(() => {
     if (!isLoading && mounted && !audioStarted) {
       setAudioStarted(true)
+      console.log("Préchargement de l'audio...")
 
       // Diviser le texte en segments plus petits pour éviter les limites de l'API
       const maxChars = 1000 // Limite de caractères par requête
@@ -569,64 +570,89 @@ On se retrouve de l'autre côté.`
 
       console.log(`Texte divisé en ${segments.length} segments pour la synthèse vocale`)
 
-      // Créer un nouvel élément audio pour le premier segment
-      const audio = new Audio()
-      audio.src = `/api/speech?text=${encodeURIComponent(segments[0])}&segment=0`
-      audio.volume = 0.8
+      // Précharger tous les segments audio en parallèle
+      const audioPromises = segments.map((segment, index) => {
+        return new Promise<HTMLAudioElement>((resolve) => {
+          const audio = new Audio()
+          audio.src = `/api/speech?text=${encodeURIComponent(segment)}&segment=${index}&t=${Date.now()}`
+          audio.preload = "auto"
+          audio.load()
 
-      // Stocker l'élément audio et les segments dans des références
-      mainAudioRef.current = audio
-
-      // Ajouter un gestionnaire pour charger les segments suivants
-      let currentSegmentIndex = 0
-      audio.addEventListener("ended", () => {
-        currentSegmentIndex++
-        if (currentSegmentIndex < segments.length) {
-          console.log(`Chargement du segment ${currentSegmentIndex}/${segments.length}`)
-          const nextAudio = new Audio()
-          nextAudio.src = `/api/speech?text=${encodeURIComponent(segments[currentSegmentIndex])}&segment=${currentSegmentIndex}`
-          nextAudio.volume = 0.8
-
-          // Transférer les écouteurs d'événements
-          nextAudio.addEventListener("timeupdate", updateSousTitre)
-
-          // Récursion pour les segments suivants
-          nextAudio.addEventListener("ended", audio.onended)
-
-          // Remplacer l'audio actuel
-          mainAudioRef.current = nextAudio
-          nextAudio.play().catch((error) => {
-            console.error(`Erreur lors de la lecture du segment ${currentSegmentIndex}:`, error)
+          // Résoudre la promesse dès que l'audio est suffisamment chargé
+          audio.addEventListener("canplaythrough", () => {
+            console.log(`Segment ${index} préchargé`)
+            resolve(audio)
           })
-        } else {
-          console.log("Tous les segments audio ont été lus")
+
+          // Timeout de sécurité pour éviter de bloquer indéfiniment
+          setTimeout(() => {
+            console.log(`Timeout pour le segment ${index}, continuons quand même`)
+            resolve(audio)
+          }, 3000)
+        })
+      })
+
+      // Fonction pour jouer les segments en séquence
+      const playSegmentsSequentially = async () => {
+        try {
+          // Attendre que le premier segment soit préchargé
+          const firstAudio = await audioPromises[0]
+          console.log("Premier segment prêt, démarrage de la lecture")
+
+          // Stocker l'élément audio dans la référence
+          mainAudioRef.current = firstAudio
+
+          // Configurer l'intervalle pour mettre à jour les sous-titres
           if (updateIntervalRef.current) {
             clearInterval(updateIntervalRef.current)
           }
-        }
-      })
+          updateIntervalRef.current = setInterval(updateSousTitre, 50)
 
-      // Configurer l'événement de chargement
-      audio.onloadedmetadata = () => {
-        // Préparer les informations de synchronisation des sous-titres
-        if (!isNaN(audio.duration) && audio.duration > 0) {
-          sousTitresInfoRef.current = prepareSousTitresInfo(audio.duration)
+          // Ajouter un écouteur pour les mises à jour de temps
+          firstAudio.addEventListener("timeupdate", updateSousTitre)
+
+          // Préparer les informations de synchronisation des sous-titres
+          if (!isNaN(firstAudio.duration) && firstAudio.duration > 0) {
+            sousTitresInfoRef.current = prepareSousTitresInfo(firstAudio.duration * segments.length)
+          }
+
+          // Démarrer la lecture immédiatement
+          await firstAudio.play()
+
+          // Jouer les segments suivants en séquence
+          let currentSegmentIndex = 0
+          firstAudio.addEventListener("ended", async function playNext() {
+            currentSegmentIndex++
+            if (currentSegmentIndex < segments.length) {
+              console.log(`Lecture du segment ${currentSegmentIndex}/${segments.length}`)
+              try {
+                // Attendre que le segment soit préchargé
+                const nextAudio = await audioPromises[currentSegmentIndex]
+
+                // Transférer les écouteurs d'événements
+                nextAudio.addEventListener("timeupdate", updateSousTitre)
+                nextAudio.addEventListener("ended", playNext)
+
+                // Remplacer l'audio actuel
+                mainAudioRef.current = nextAudio
+                await nextAudio.play()
+              } catch (error) {
+                console.error(`Erreur lors de la lecture du segment ${currentSegmentIndex}:`, error)
+              }
+            } else {
+              console.log("Tous les segments audio ont été lus")
+              if (updateIntervalRef.current) {
+                clearInterval(updateIntervalRef.current)
+              }
+            }
+          })
+        } catch (error) {
+          console.error("Erreur lors de la lecture audio:", error)
         }
       }
 
-      // Configurer l'intervalle pour mettre à jour les sous-titres
-      if (updateIntervalRef.current) {
-        clearInterval(updateIntervalRef.current)
-      }
-      updateIntervalRef.current = setInterval(updateSousTitre, 50) // Mise à jour plus fréquente (50ms au lieu de 100ms)
-
-      // Ajouter un écouteur pour les mises à jour de temps
-      audio.addEventListener("timeupdate", updateSousTitre)
-
-      // Démarrer la lecture
-      audio.play().catch((error) => {
-        console.error("Erreur lors de la lecture audio:", error)
-      })
+      // Démarrer la lecture dès que possible
+      playSegmentsSequentially()
     }
   }, [isLoading, mounted, audioStarted, texteNarrationComplet])
 
