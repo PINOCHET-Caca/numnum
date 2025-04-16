@@ -592,28 +592,39 @@ On se retrouve de l'autre côté.`
         })
       })
 
-      // Fonction pour jouer les segments en séquence
+      // Remplacer la fonction playSegmentsSequentially par cette version améliorée qui maintient la synchronisation des sous-titres
+
       const playSegmentsSequentially = async () => {
         try {
-          // Attendre que le premier segment soit préchargé
-          const firstAudio = await audioPromises[0]
-          console.log("Premier segment prêt, démarrage de la lecture")
+          // Calculer la durée totale estimée pour tous les segments
+          let totalDuration = 0
+          // Précharger tous les segments et calculer la durée totale
+          const preloadedAudios = await Promise.all(audioPromises)
+          for (const audio of preloadedAudios) {
+            if (!isNaN(audio.duration)) {
+              totalDuration += audio.duration
+            }
+          }
 
-          // Stocker l'élément audio dans la référence
-          mainAudioRef.current = firstAudio
+          console.log(`Durée totale estimée: ${totalDuration} secondes`)
 
-          // Configurer l'intervalle pour mettre à jour les sous-titres
+          // Préparer les informations de synchronisation des sous-titres avec la durée totale
+          sousTitresInfoRef.current = prepareSousTitresInfo(totalDuration)
+
+          // Configurer l'intervalle pour mettre à jour les sous-titres - plus fréquent pour une meilleure précision
           if (updateIntervalRef.current) {
             clearInterval(updateIntervalRef.current)
           }
-          updateIntervalRef.current = setInterval(updateSousTitre, 50)
+          updateIntervalRef.current = setInterval(updateSousTitre, 30)
 
-          // Ajouter un écouteur pour les mises à jour de temps
-          firstAudio.addEventListener("timeupdate", updateSousTitre)
+          // Variables pour suivre la progression globale
+          let currentTime = 0
+          const segmentStartTimes = [0]
 
-          // Préparer les informations de synchronisation des sous-titres
-          if (!isNaN(firstAudio.duration) && firstAudio.duration > 0) {
-            sousTitresInfoRef.current = prepareSousTitresInfo(firstAudio.duration * segments.length)
+          // Calculer les temps de début de chaque segment
+          for (let i = 1; i < preloadedAudios.length; i++) {
+            currentTime += preloadedAudios[i - 1].duration || 0
+            segmentStartTimes.push(currentTime)
           }
 
           // Fonction récursive pour jouer les segments en séquence
@@ -628,24 +639,119 @@ On se retrouve de l'autre côté.`
 
             try {
               console.log(`Lecture du segment ${index}/${segments.length}`)
-              // Attendre que le segment soit préchargé
-              const audio = await audioPromises[index]
+              const audio = preloadedAudios[index]
 
               // Stocker l'audio actuel
               mainAudioRef.current = audio
 
+              // Ajouter un gestionnaire personnalisé pour timeupdate qui ajuste le temps global
+              const originalTimeUpdateListener = () => {
+                // Calculer le temps global en ajoutant le temps de début du segment
+                const globalTime = segmentStartTimes[index] + audio.currentTime
+
+                // Stocker temporairement le temps global pour que updateSousTitre puisse l'utiliser
+                audio.globalTime = globalTime
+
+                // Appeler updateSousTitre
+                updateSousTitre()
+              }
+
+              // Remplacer la fonction updateSousTitre pour utiliser le temps global
+              const originalUpdateSousTitre = updateSousTitre
+              const updateSousTitreOverride = () => {
+                if (!mainAudioRef.current) return
+
+                // Utiliser le temps global si disponible
+                const currentTime =
+                  mainAudioRef.current.globalTime !== undefined
+                    ? mainAudioRef.current.globalTime
+                    : mainAudioRef.current.currentTime
+
+                const totalDuration = totalDuration || 100
+
+                // Le reste de la fonction reste identique...
+                // Phrase spécifique à afficher
+                const phraseSpecifique = "Vous êtes intuitif, puissant et pragmatique."
+
+                // Forcer l'affichage de la phrase spécifique entre 65% et 75% de la durée totale
+                const startTimeForPhrase = totalDuration * 0.65
+                const endTimeForPhrase = totalDuration * 0.75
+
+                if (currentTime >= startTimeForPhrase && currentTime <= endTimeForPhrase) {
+                  setSousTitreActuel(phraseSpecifique)
+                  setShowVowelsAnimation(false)
+                  setShowCircle(true)
+                  setShowTable(false) // S'assurer que le tableau est caché
+                  setShowNumberInCircle(false)
+                  return
+                }
+
+                // Pour les autres moments, trouver le sous-titre correspondant
+                if (sousTitresInfoRef.current.length === 0) return
+
+                for (let i = 0; i < sousTitresInfoRef.current.length; i++) {
+                  const sousTitreInfo = sousTitresInfoRef.current[i]
+                  if (currentTime >= sousTitreInfo.debut && currentTime < sousTitreInfo.fin) {
+                    // Ne pas écraser la phrase spécifique si on est dans sa plage de temps
+                    if (currentTime < startTimeForPhrase || currentTime > endTimeForPhrase) {
+                      setSousTitreActuel(sousTitreInfo.texte)
+                    }
+
+                    // Logique pour les transitions visuelles
+                    if (sousTitreInfo.texte.includes("Je vais commencer par examiner votre nombre de l'âme")) {
+                      setShowCircle(false) // Cacher le cercle
+                      setShowTable(true) // Afficher le tableau
+                      setTableKey((prev) => prev + 1)
+                      setTableForceRender((prev) => !prev)
+                    } else if (
+                      sousTitreInfo.texte.includes("Les voyelles, en revanche, sont prononcées avec un souffle fluide")
+                    ) {
+                      setShowTable(false) // Cacher le tableau
+                      setShowCircle(false) // Cacher le cercle
+                      setShowVowelsAnimation(true) // Afficher l'animation des voyelles
+                    } else if (sousTitreInfo.texte.includes("Vous êtes intuitif, puissant et pragmatique")) {
+                      setShowVowelsAnimation(false) // Cacher l'animation des voyelles
+                      setShowCircle(true) // Afficher le cercle
+                      setShowTable(false) // Cacher le tableau
+                      setShowNumberInCircle(false) // Ne pas afficher le nombre dans le cercle
+                    } else if (
+                      sousTitreInfo.texte.includes("Après avoir analysé les voyelles de votre nom et prénom")
+                    ) {
+                      setShowVowelsAnimation(false) // Cacher l'animation des voyelles
+                      setShowCircle(true) // Afficher le cercle
+                      setShowTable(false) // Cacher le tableau
+                      setShowNumberInCircle(true) // Afficher le nombre dans le cercle
+                    }
+
+                    return
+                  }
+                }
+              }
+
+              // Assign the override to the original function
+              let updateSousTitre = updateSousTitreOverride
+
               // Ajouter l'écouteur pour les mises à jour de temps
-              audio.addEventListener("timeupdate", updateSousTitre)
+              audio.addEventListener("timeupdate", originalTimeUpdateListener)
 
               // Ajouter l'écouteur pour passer au segment suivant
               audio.onended = () => {
-                console.log(`Segment ${index} terminé, passage au suivant`)
+                console.log(`Segment ${index} terminé, passage au`)
+                // Nettoyer les écouteurs avant de passer au segment suivant
+                audio.removeEventListener("timeupdate", originalTimeUpdateListener)
+                // Restaurer la fonction updateSousTitre originale
+                updateSousTitre = originalUpdateSousTitre
+                // Passer au segment suivant
                 playNextSegment(index + 1)
               }
 
               // Démarrer la lecture
               await audio.play().catch((error) => {
                 console.error(`Erreur lors de la lecture du segment ${index}:`, error)
+                // Nettoyer les écouteurs avant de passer au segment suivant
+                audio.removeEventListener("timeupdate", originalTimeUpdateListener)
+                // Restaurer la fonction updateSousTitre originale
+                updateSousTitre = originalUpdateSousTitre
                 // En cas d'erreur, passer au segment suivant
                 playNextSegment(index + 1)
               })
