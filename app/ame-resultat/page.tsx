@@ -304,52 +304,6 @@ Lorsque vous suivez cette voie, vous découvrez une paix intérieure et une clar
     }
   }
 
-  // Fonction pour charger et démarrer l'audio principal
-  const loadAndPlayMainAudio = async () => {
-    try {
-      // Créer un nouvel élément audio
-      const audio = new Audio()
-
-      // Définir la source avec le texte complet
-      audio.src = `/api/speech?text=${encodeURIComponent(texteNarrationComplet)}&t=${Date.now()}`
-
-      // Stocker l'élément audio dans la référence
-      mainAudioRef.current = audio
-
-      // Configurer l'événement de chargement
-      audio.onloadedmetadata = () => {
-        // Préparer les informations de synchronisation des sous-titres
-        if (!isNaN(audio.duration) && audio.duration > 0) {
-          sousTitresInfoRef.current = prepareSousTitresInfo(audio.duration)
-        }
-      }
-
-      // Configurer l'intervalle pour mettre à jour les sous-titres
-      if (updateIntervalRef.current) {
-        clearInterval(updateIntervalRef.current)
-      }
-      updateIntervalRef.current = setInterval(updateSousTitre, 30)
-
-      // Ajouter un écouteur pour les mises à jour de temps
-      audio.addEventListener("timeupdate", updateSousTitre)
-
-      // Configurer l'événement de fin
-      audio.onended = () => {
-        console.log("Audio principal terminé")
-        if (updateIntervalRef.current) {
-          clearInterval(updateIntervalRef.current)
-        }
-      }
-
-      // Démarrer la lecture
-      audio.play().catch((error) => {
-        console.error("Erreur lors de la lecture audio:", error)
-      })
-    } catch (error) {
-      console.error("Erreur lors du chargement ou de la lecture de l'audio principal:", error)
-    }
-  }
-
   // Initialisation
   useEffect(() => {
     setMounted(true)
@@ -369,12 +323,10 @@ Lorsque vous suivez cette voie, vous découvrez une paix intérieure et une clar
       })
     }
 
-    // Démarrer l'audio principal après un court délai
+    // Animation de chargement très courte
     setTimeout(() => {
       setIsLoading(false)
-      setAudioStarted(true)
-      loadAndPlayMainAudio()
-    }, 500)
+    }, 1000)
 
     // Nettoyage
     return () => {
@@ -394,6 +346,51 @@ Lorsque vous suivez cette voie, vous découvrez une paix intérieure et une clar
       }
     }
   }, [])
+
+  // Effet pour démarrer l'audio principal
+  useEffect(() => {
+    if (!isLoading && mounted && !audioStarted) {
+      setAudioStarted(true)
+
+      // Créer un nouvel élément audio
+      const audio = new Audio()
+      audio.src = `/api/speech?text=${encodeURIComponent(texteNarrationComplet)}`
+      audio.volume = 0.8
+
+      // Stocker l'élément audio dans la référence
+      mainAudioRef.current = audio
+
+      // Configurer l'événement de chargement
+      audio.onloadedmetadata = () => {
+        // Préparer les informations de synchronisation des sous-titres
+        if (!isNaN(audio.duration) && audio.duration > 0) {
+          sousTitresInfoRef.current = prepareSousTitresInfo(audio.duration)
+        }
+      }
+
+      // Configurer l'intervalle pour mettre à jour les sous-titres
+      if (updateIntervalRef.current) {
+        clearInterval(updateIntervalRef.current)
+      }
+      updateIntervalRef.current = setInterval(updateSousTitre, 100)
+
+      // Ajouter un écouteur pour les mises à jour de temps
+      audio.addEventListener("timeupdate", updateSousTitre)
+
+      // Configurer l'événement de fin
+      audio.onended = () => {
+        console.log("Audio principal terminé")
+        if (updateIntervalRef.current) {
+          clearInterval(updateIntervalRef.current)
+        }
+      }
+
+      // Démarrer la lecture
+      audio.play().catch((error) => {
+        console.error("Erreur lors de la lecture audio:", error)
+      })
+    }
+  }, [isLoading, mounted, audioStarted, texteNarrationComplet])
 
   // Gestion du son de fond
   const toggleMute = () => {
