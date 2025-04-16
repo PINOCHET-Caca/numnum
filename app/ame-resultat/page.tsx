@@ -10,44 +10,27 @@ import { prenomsFeminins } from "@/utils/prenoms-feminins"
 import { NumerologyTableAme } from "@/components/numerology-table-ame"
 import { VowelsAnimation } from "@/components/vowels-animation"
 
-// Vérifier que la phrase clé est correctement incluse dans le texte de narration
-// Remplacer la fonction diviserEnSegmentsCourts par cette version améliorée qui préserve les phrases importantes
-
+// Fonction pour diviser un texte en segments courts (maximum 2 lignes)
 const diviserEnSegmentsCourts = (texte: string): string[] => {
-  // Phrase spécifique à préserver
-  const phraseSpecifique = "Vous êtes intuitif, puissant et pragmatique."
-
-  // Vérifier si la phrase spécifique est présente
-  if (texte.includes(phraseSpecifique)) {
-    // Diviser le texte en trois parties: avant, la phrase spécifique, et après
-    const parties = texte.split(phraseSpecifique)
-
-    // Diviser la partie avant en segments
-    const segmentsAvant = parties[0].split(/(?<=[.!?])\s+/).filter((s) => s.trim())
-
-    // Diviser la partie après en segments
-    const segmentsApres = parties[1].split(/(?<=[.!?])\s+/).filter((s) => s.trim())
-
-    // Retourner tous les segments avec la phrase spécifique au milieu
-    return [...segmentsAvant, phraseSpecifique, ...segmentsApres]
-  }
-
-  // Si la phrase spécifique n'est pas trouvée, diviser normalement
-  return texte.split(/(?<=[.!?])\s+/).filter((s) => s.trim())
-}
-
-// Fonction auxiliaire pour diviser une partie du texte en segments
-const diviserPartieEnSegments = (texte: string): string[] => {
   // Longueur maximale pour 2 lignes (environ 100 caractères)
   const longueurMax = 100
 
   // Tableau pour stocker les segments courts
   const segments: string[] = []
 
+  // Phrase spécifique à préserver intacte
+  const phraseSpecifique = "Vous êtes intuitif, puissant et pragmatique."
+
   // Diviser d'abord par les points, points d'exclamation et points d'interrogation
   const phrases = texte.split(/(?<=[.!?])\s+/)
 
   for (const phrase of phrases) {
+    // Si c'est la phrase spécifique, l'ajouter telle quelle
+    if (phrase.trim() === phraseSpecifique) {
+      segments.push(phraseSpecifique)
+      continue
+    }
+
     // Si la phrase est déjà assez courte, l'ajouter directement
     if (phrase.length <= longueurMax) {
       segments.push(phrase)
@@ -146,7 +129,6 @@ export default function AmeResultat() {
   const [audioStarted, setAudioStarted] = useState(false)
   const [tableKey, setTableKey] = useState(0) // Clé pour forcer le rendu du tableau
   const [tableForceRender, setTableForceRender] = useState(false) // État pour forcer le rendu du tableau
-  const [audioLoaded, setAudioLoaded] = useState(false)
 
   // Ajouter un nouvel état pour contrôler l'affichage de l'animation des voyelles
   const [showVowelsAnimation, setShowVowelsAnimation] = useState(false)
@@ -173,7 +155,7 @@ export default function AmeResultat() {
   // Déterminer le genre de l'utilisateur
   const genreUtilisateur = determinerGenre(prenom)
 
-  // Texte de narration complet
+  // Texte de narration complet - UTILISER EXACTEMENT LE TEXTE FOURNI
   const texteNarrationComplet = `${prenom}, j'ai réuni toutes les informations nécessaires pour compléter votre lecture de numérologie personnalisée, et comme vous l'aurez deviné : j'ai gardé le meilleur pour la fin.
 
 Mais avant de commencer, je dois vous avertir.
@@ -297,6 +279,7 @@ Lorsque vous suivez cette voie, vous découvrez une paix intérieure et une clar
       setSousTitreActuel(phraseSpecifique)
       setShowVowelsAnimation(false)
       setShowCircle(true)
+      setShowTable(false) // S'assurer que le tableau est caché
       setShowNumberInCircle(false)
       return
     }
@@ -314,16 +297,19 @@ Lorsque vous suivez cette voie, vous découvrez une paix intérieure et une clar
 
         // Logique pour les transitions visuelles
         if (sousTitreInfo.texte.includes("Je vais commencer par examiner votre nombre de l'âme")) {
-          setShowCircle(false)
-          setShowTable(true)
+          setShowCircle(false) // Cacher le cercle
+          setShowTable(true) // Afficher le tableau
           setTableKey((prev) => prev + 1)
           setTableForceRender((prev) => !prev)
         } else if (sousTitreInfo.texte.includes("Les voyelles, en revanche, sont prononcées avec un souffle fluide")) {
-          setShowTable(false)
-          setShowCircle(false)
-          setShowVowelsAnimation(true)
+          setShowTable(false) // Cacher le tableau
+          setShowCircle(false) // Cacher le cercle
+          setShowVowelsAnimation(true) // Afficher l'animation des voyelles
         } else if (sousTitreInfo.texte.includes("Votre nombre de l'âme est 7")) {
-          setShowNumberInCircle(true)
+          setShowVowelsAnimation(false) // Cacher l'animation des voyelles
+          setShowCircle(true) // Afficher le cercle
+          setShowTable(false) // Cacher le tableau
+          setShowNumberInCircle(true) // Afficher le nombre dans le cercle
         }
 
         return
@@ -422,23 +408,25 @@ Lorsque vous suivez cette voie, vous découvrez une paix intérieure et une clar
   // Effet pour forcer l'affichage de la phrase spécifique après un délai
   useEffect(() => {
     if (audioStarted) {
-      // Forcer l'affichage de la phrase spécifique après 30 secondes
+      // Forcer l'affichage de la phrase spécifique après 20 secondes
       const forceTimer1 = setTimeout(() => {
         console.log("Premier forçage de l'affichage de la phrase spécifique")
         setSousTitreActuel("Vous êtes intuitif, puissant et pragmatique.")
         setShowVowelsAnimation(false)
         setShowCircle(true)
+        setShowTable(false) // S'assurer que le tableau est caché
         setShowNumberInCircle(false)
-      }, 30000)
+      }, 20000)
 
-      // Forcer à nouveau après 60 secondes au cas où
+      // Forcer à nouveau après 40 secondes au cas où
       const forceTimer2 = setTimeout(() => {
         console.log("Second forçage de l'affichage de la phrase spécifique")
         setSousTitreActuel("Vous êtes intuitif, puissant et pragmatique.")
         setShowVowelsAnimation(false)
         setShowCircle(true)
+        setShowTable(false) // S'assurer que le tableau est caché
         setShowNumberInCircle(false)
-      }, 60000)
+      }, 40000)
 
       return () => {
         clearTimeout(forceTimer1)
@@ -569,21 +557,20 @@ Lorsque vous suivez cette voie, vous découvrez une paix intérieure et une clar
           </Button>
         </div>
 
-        {/* Tableau numérologique */}
+        {/* Tableau numérologique - UNIQUEMENT affiché quand showTable est true */}
         {showTable && fullName && (
           <motion.div
             className="w-full max-w-3xl flex flex-col items-center justify-center mb-10"
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.8 }}
-            key={`table-${tableKey}`} // Forcer le rendu avec une clé unique
+            key={`table-${tableKey}`}
           >
             <NumerologyTableAme
               name={fullName}
               forceRender={tableForceRender}
               onComplete={() => {
-                console.log("Animation du tableau terminée, attente de la phrase clé")
-                // Ne rien faire ici, attendre la phrase clé pour passer à l'animation des voyelles
+                console.log("Animation du tableau terminée")
               }}
               delay={500}
             />
@@ -603,15 +590,14 @@ Lorsque vous suivez cette voie, vous découvrez une paix intérieure et une clar
               name="CACA ISSOU"
               forceRender={tableForceRender}
               onComplete={() => {
-                console.log("Animation du tableau terminée, attente de la phrase clé")
-                // Ne rien faire ici, attendre la phrase clé pour passer à l'animation des voyelles
+                console.log("Animation du tableau terminée")
               }}
               delay={500}
             />
           </motion.div>
         )}
 
-        {/* Animation des voyelles */}
+        {/* Animation des voyelles - UNIQUEMENT affichée quand showVowelsAnimation est true */}
         {showVowelsAnimation && fullName && (
           <motion.div
             className="w-full max-w-3xl flex flex-col items-center justify-center mb-10"
@@ -623,7 +609,7 @@ Lorsque vous suivez cette voie, vous découvrez une paix intérieure et une clar
           </motion.div>
         )}
 
-        {/* Cercle avec image */}
+        {/* Cercle avec image - UNIQUEMENT affiché quand showCircle est true */}
         {showCircle && (
           <motion.div
             className="relative w-full max-w-3xl h-[350px] sm:h-[500px] flex items-center justify-center mb-10"
