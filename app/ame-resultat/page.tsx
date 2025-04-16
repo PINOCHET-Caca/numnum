@@ -310,48 +310,25 @@ Lorsque vous suivez cette voie, vous découvrez une paix intérieure et une clar
       // Créer un nouvel élément audio
       const audio = new Audio()
 
-      // Définir la priorité de chargement maximale
-      audio.preload = "auto"
+      // Définir la source avec le texte complet
+      audio.src = `/api/speech?text=${encodeURIComponent(texteNarrationComplet)}&t=${Date.now()}`
 
-      // Réduire le délai de mise en mémoire tampon pour commencer plus rapidement
-      audio.autobuffer = true
-
-      // Stocker l'élément audio dans la référence avant même de définir la source
+      // Stocker l'élément audio dans la référence
       mainAudioRef.current = audio
 
-      // Définir la source avec le texte complet et des paramètres pour chargement immédiat
-      audio.src = `/api/speech?text=${encodeURIComponent(texteNarrationComplet)}&t=${Date.now()}&priority=highest&immediate=true&speed=fast`
-
-      // Commencer à charger immédiatement
-      audio.load()
-
-      // Ajouter un gestionnaire d'événements pour démarrer la lecture dès que possible
-      audio.addEventListener("canplaythrough", () => {
-        audio.play().catch((e) => {
-          console.error("Erreur lors de la lecture après canplaythrough:", e)
-        })
-      })
-
-      // Essayer de jouer immédiatement sans attendre canplaythrough
-      const playPromise = audio.play()
-
-      if (playPromise !== undefined) {
-        playPromise.catch((e) => {
-          console.error("Erreur lors de la lecture initiale:", e)
-          // Réessayer immédiatement avec un délai minimal
-          setTimeout(() => {
-            if (audio) {
-              audio.play().catch((err) => console.error("Erreur lors de la seconde tentative:", err))
-            }
-          }, 50) // Réduit à 50ms
-        })
+      // Configurer l'événement de chargement
+      audio.onloadedmetadata = () => {
+        // Préparer les informations de synchronisation des sous-titres
+        if (!isNaN(audio.duration) && audio.duration > 0) {
+          sousTitresInfoRef.current = prepareSousTitresInfo(audio.duration)
+        }
       }
 
-      // Configurer l'intervalle pour mettre à jour les sous-titres immédiatement
+      // Configurer l'intervalle pour mettre à jour les sous-titres
       if (updateIntervalRef.current) {
         clearInterval(updateIntervalRef.current)
       }
-      updateIntervalRef.current = setInterval(updateSousTitre, 30) // Vérification très fréquente (30ms)
+      updateIntervalRef.current = setInterval(updateSousTitre, 30)
 
       // Ajouter un écouteur pour les mises à jour de temps
       audio.addEventListener("timeupdate", updateSousTitre)
@@ -364,16 +341,9 @@ Lorsque vous suivez cette voie, vous découvrez une paix intérieure et une clar
         }
       }
 
-      // Préparer les informations de synchronisation des sous-titres immédiatement
-      // Estimation de la durée basée sur le nombre de caractères (50ms par caractère)
-      const estimatedDuration = texteNarrationComplet.length * 0.05
-      sousTitresInfoRef.current = prepareSousTitresInfo(estimatedDuration)
-
-      // Mettre à jour les informations de synchronisation une fois que la durée réelle est connue
-      audio.addEventListener("loadedmetadata", () => {
-        if (!isNaN(audio.duration) && audio.duration > 0) {
-          sousTitresInfoRef.current = prepareSousTitresInfo(audio.duration)
-        }
+      // Démarrer la lecture
+      audio.play().catch((error) => {
+        console.error("Erreur lors de la lecture audio:", error)
       })
     } catch (error) {
       console.error("Erreur lors du chargement ou de la lecture de l'audio principal:", error)
@@ -399,15 +369,12 @@ Lorsque vous suivez cette voie, vous découvrez une paix intérieure et une clar
       })
     }
 
-    // Démarrer l'audio principal immédiatement sans attendre le chargement complet
-    setIsLoading(false)
-    setAudioStarted(true)
-
-    // Ajouter un petit délai pour s'assurer que le composant est complètement monté
-    // avant de démarrer l'audio (évite certains problèmes de lecture)
+    // Démarrer l'audio principal après un court délai
     setTimeout(() => {
+      setIsLoading(false)
+      setAudioStarted(true)
       loadAndPlayMainAudio()
-    }, 100)
+    }, 500)
 
     // Nettoyage
     return () => {
