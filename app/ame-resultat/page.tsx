@@ -138,6 +138,10 @@ export default function AmeResultat() {
   const mainAudioRef = useRef<HTMLAudioElement | null>(null)
   const sousTitresInfoRef = useRef<SousTitreInfo[]>([])
   const updateIntervalRef = useRef<NodeJS.Timeout | null>(null)
+  const audioSegmentsRef = useRef<HTMLAudioElement[]>([])
+  const currentSegmentIndexRef = useRef<number>(0)
+  const totalDurationRef = useRef<number>(0)
+  const startTimeRef = useRef<number>(0)
 
   // Fonction pour déterminer si un prénom est masculin ou féminin
   const determinerGenre = (prenom: string): "masculin" | "feminin" => {
@@ -441,8 +445,12 @@ On se retrouve de l'autre côté.`
   const updateSousTitre = () => {
     if (!mainAudioRef.current) return
 
-    const currentTime = mainAudioRef.current.currentTime
-    const totalDuration = mainAudioRef.current.duration || 100
+    // Calculer le temps écoulé depuis le début de la lecture
+    const elapsedTime = (Date.now() - startTimeRef.current) / 1000
+
+    // Utiliser le temps écoulé pour la synchronisation des sous-titres
+    const currentTime = elapsedTime
+    const totalDuration = totalDurationRef.current || 100
 
     // Phrase spécifique à afficher
     const phraseSpecifique = "Vous êtes intuitif, puissant et pragmatique."
@@ -570,166 +578,67 @@ On se retrouve de l'autre côté.`
 
       console.log(`Texte divisé en ${segments.length} segments pour la synthèse vocale`)
 
-      // Précharger tous les segments audio en parallèle
-      const audioPromises = segments.map((segment, index) => {
-        return new Promise<HTMLAudioElement>((resolve) => {
-          const audio = new Audio()
-          audio.src = `/api/speech?text=${encodeURIComponent(segment)}&segment=${index}&t=${Date.now()}`
-          audio.preload = "auto"
-          audio.load()
+      // Estimation de la durée totale (en secondes)
+      // Basée sur une vitesse de parole moyenne de 150 mots par minute
+      const wordsCount = texteNarrationComplet.split(/\s+/).length
+      const estimatedDuration = (wordsCount / 150) * 60
+      totalDurationRef.current = estimatedDuration
+      console.log(`Durée estimée: ${estimatedDuration} secondes`)
 
-          // Résoudre la promesse dès que l'audio est suffisamment chargé
-          audio.addEventListener("canplaythrough", () => {
-            console.log(`Segment ${index} préchargé`)
-            resolve(audio)
-          })
+      // Préparer les informations de synchronisation des sous-titres
+      sousTitresInfoRef.current = prepareSousTitresInfo(estimatedDuration)
 
-          // Timeout plus court pour le premier segment pour un démarrage rapide
-          const timeout = index === 0 ? 1000 : 3000
+      // Configurer l'intervalle pour mettre à jour les sous-titres
+      if (updateIntervalRef.current) {
+        clearInterval(updateIntervalRef.current)
+      }
+      updateIntervalRef.current = setInterval(updateSousTitre, 30)
 
-          // Timeout de sécurité pour éviter de bloquer indéfiniment
-          setTimeout(() => {
-            console.log(`Timeout pour le segment ${index}, continuons quand même`)
-            resolve(audio)
-          }, timeout)
-        })
-      })
+      // Enregistrer le temps de début pour la synchronisation
+      startTimeRef.current = Date.now()
 
-      // Remplacer la fonction playSegmentsSequentially par cette version améliorée qui maintient la synchronisation des sous-titres
-
-      const playSegmentsSequentially = async () => {
-        try {
-          console.log("Démarrage de la lecture audio immédiate")
-
-          // Commencer à jouer le premier segment immédiatement sans attendre les autres
-          const firstAudioPromise = audioPromises[0]
-
-          // Précharger les autres segments en arrière-plan
-          const otherAudiosPromise = Promise.all(audioPromises.slice(1))
-
-          // Configurer l'intervalle pour mettre à jour les sous-titres - plus fréquent pour une meilleure précision
+      // Fonction pour jouer les segments audio en séquence
+      const playNextSegment = (index) => {
+        if (index >= segments.length) {
+          console.log("Tous les segments audio ont été lus")
           if (updateIntervalRef.current) {
             clearInterval(updateIntervalRef.current)
           }
-          updateIntervalRef.current = setInterval(updateSousTitre, 30)
-
-          // Obtenir le premier segment et commencer à le jouer immédiatement
-          const firstAudio = await firstAudioPromise
-          console.log("Premier segment prêt, démarrage immédiat de la lecture")
-
-          // Stocker l'audio actuel
-          mainAudioRef.current = firstAudio
-
-          // Préparer les informations de synchronisation temporaires avec une estimation de durée
-          // Nous les mettrons à jour une fois que tous les segments seront chargés
-          const estimatedDuration = firstAudio.duration * segments.length
-          sousTitresInfoRef.current = prepareSousTitresInfo(estimatedDuration)
-
-          // Variables pour suivre la progression globale
-          let currentTime = 0
-          const segmentStartTimes = [0]
-
-          // Fonction récursive pour jouer les segments en séquence
-          const playNextSegment = async (index) => {
-            if (index >= segments.length) {
-              console.log("Tous les segments audio ont été lus")
-              if (updateIntervalRef.current) {
-                clearInterval(updateIntervalRef.current)
-              }
-              return
-            }
-
-            try {
-              console.log(`Lecture du segment ${index}/${segments.length}`)
-
-              // Obtenir l'audio pour ce segment
-              let audio
-              if (index === 0) {
-                audio = firstAudio
-              } else {
-                // Attendre que les segments soient préchargés si nécessaire
-                const preloadedAudios = await otherAudiosPromise
-                audio = preloadedAudios[index - 1]
-              }
-
-              // Mettre à jour les temps de début si ce n'est pas le premier segment
-              if (index > 0 && index === 1) {
-                // Une fois que nous avons au moins deux segments, mettre à jour les temps de début
-                currentTime += firstAudio.duration || 0
-                segmentStartTimes.push(currentTime)
-              } else if (index > 1) {
-                const preloadedAudios = await otherAudiosPromise
-                currentTime += preloadedAudios[index - 2].duration || 0
-                segmentStartTimes.push(currentTime)
-              }
-
-              // Stocker l'audio actuel
-              mainAudioRef.current = audio
-
-              // Ajouter un gestionnaire personnalisé pour timeupdate qui ajuste le temps global
-              const originalTimeUpdateListener = () => {
-                // Calculer le temps global en ajoutant le temps de début du segment
-                const globalTime = segmentStartTimes[index] + audio.currentTime
-
-                // Stocker temporairement le temps global pour que updateSousTitre puisse l'utiliser
-                audio.globalTime = globalTime
-
-                // Appeler updateSousTitre
-                updateSousTitre()
-              }
-
-              // Ajouter l'écouteur pour les mises à jour de temps
-              audio.addEventListener("timeupdate", originalTimeUpdateListener)
-
-              // Ajouter l'écouteur pour passer au segment suivant
-              audio.onended = () => {
-                console.log(`Segment ${index} terminé, passage au suivant`)
-                // Nettoyer les écouteurs avant de passer au segment suivant
-                audio.removeEventListener("timeupdate", originalTimeUpdateListener)
-                // Passer au segment suivant
-                playNextSegment(index + 1)
-              }
-
-              // Démarrer la lecture
-              await audio.play().catch((error) => {
-                console.error(`Erreur lors de la lecture du segment ${index}:`, error)
-                // Nettoyer les écouteurs avant de passer au segment suivant
-                audio.removeEventListener("timeupdate", originalTimeUpdateListener)
-                // En cas d'erreur, passer au segment suivant
-                playNextSegment(index + 1)
-              })
-            } catch (error) {
-              console.error(`Erreur lors de la lecture du segment ${index}:`, error)
-              // En cas d'erreur, passer au segment suivant
-              playNextSegment(index + 1)
-            }
-          }
-
-          // Démarrer la séquence de lecture avec le premier segment
-          playNextSegment(0)
-
-          // Mettre à jour les informations de synchronisation une fois que tous les segments sont chargés
-          otherAudiosPromise.then((preloadedAudios) => {
-            // Calculer la durée totale réelle
-            let totalDuration = firstAudio.duration || 0
-            for (const audio of preloadedAudios) {
-              if (!isNaN(audio.duration)) {
-                totalDuration += audio.duration
-              }
-            }
-
-            console.log(`Durée totale réelle: ${totalDuration} secondes`)
-
-            // Mettre à jour les informations de synchronisation avec la durée totale réelle
-            sousTitresInfoRef.current = prepareSousTitresInfo(totalDuration)
-          })
-        } catch (error) {
-          console.error("Erreur lors de la lecture audio:", error)
+          return
         }
+
+        console.log(`Lecture du segment ${index}/${segments.length}`)
+
+        // Créer un nouvel élément audio pour ce segment
+        const audio = new Audio()
+        audio.src = `/api/speech?text=${encodeURIComponent(segments[index])}&segment=${index}&t=${Date.now()}`
+
+        // Stocker l'audio dans la référence
+        mainAudioRef.current = audio
+        audioSegmentsRef.current[index] = audio
+        currentSegmentIndexRef.current = index
+
+        // Configurer l'événement de fin pour passer au segment suivant
+        audio.onended = () => {
+          console.log(`Segment ${index} terminé, passage au suivant`)
+          playNextSegment(index + 1)
+        }
+
+        // Gérer les erreurs
+        audio.onerror = () => {
+          console.error(`Erreur lors de la lecture du segment ${index}`)
+          playNextSegment(index + 1)
+        }
+
+        // Démarrer la lecture
+        audio.play().catch((error) => {
+          console.error(`Erreur lors de la lecture du segment ${index}:`, error)
+          playNextSegment(index + 1)
+        })
       }
 
-      // Démarrer la lecture dès que possible
-      playSegmentsSequentially()
+      // Démarrer la lecture du premier segment
+      playNextSegment(0)
     }
   }, [isLoading, mounted, audioStarted, texteNarrationComplet])
 
