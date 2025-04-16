@@ -182,8 +182,6 @@ Les bienfaits qu'il a observés étaient indéniables.
 
 Vous êtes intuitif, puissant et pragmatique.
 
-Alors, êtes-vous curieux de savoir ce que révèle votre nombre de l'âme ?
-
 Votre nombre de l'âme est 7, le nombre de la sagesse intérieure et de la spiritualité.
 
 Ce nombre indique que vous avez une profonde vie intérieure et une forte intuition que vous utilisez pour naviguer dans le monde.
@@ -221,13 +219,9 @@ Lorsque vous suivez cette voie, vous découvrez une paix intérieure et une clar
     const totalChars = texteNarrationComplet.length
     const durationPerChar = dureeAudio / totalChars
 
-    // Phrase clé qui marque le point où la synchronisation devient problématique
-    const phraseCleSynchronisation = "et je pense que vous le serez aussi"
+    // Phrase clé après laquelle les sous-titres commencent à être en retard
+    const phraseCleSynchronisation = "Vous êtes intuitif, puissant et pragmatique"
     const positionPhraseCleSynchronisation = texteNarrationComplet.indexOf(phraseCleSynchronisation)
-
-    // Phrase après laquelle la synchronisation est bonne
-    const phraseFinProbleme = "en lumière sur votre personnalité, vos motivations cachées et votre véritable but"
-    const positionPhraseFinProbleme = texteNarrationComplet.indexOf(phraseFinProbleme) + phraseFinProbleme.length
 
     let charCount = 0
     for (let i = 0; i < sousTitres.length; i++) {
@@ -237,28 +231,12 @@ Lorsque vous suivez cette voie, vous découvrez une paix intérieure et une clar
         charCount = position
       }
 
-      // Déterminer si ce sous-titre est avant, pendant ou après la section problématique
-      const isBeforeProblemStart = charCount < positionPhraseCleSynchronisation
-      const isInProblemSection = charCount >= positionPhraseCleSynchronisation && charCount < positionPhraseFinProbleme
-      const isAfterProblemEnd = charCount >= positionPhraseFinProbleme
+      // Déterminer si ce sous-titre est après la phrase clé
+      const isAfterProblemStart = charCount >= positionPhraseCleSynchronisation
 
       // Calculer un décalage adapté à la position dans le texte
-      let decalage = 0
-
-      if (i === 0) {
-        // Premier sous-titre (avec le prénom) - pas de décalage
-        decalage = 0
-      } else if (isBeforeProblemStart) {
-        // Avant le début du problème - décalage minimal
-        decalage = 0
-      } else if (isInProblemSection) {
-        // Dans la section problématique - décalage négatif beaucoup plus important
-        // Décalage fixe très important pour toute la section problématique
-        decalage = -2.0
-      } else if (isAfterProblemEnd) {
-        // Après la fin du problème - décalage plus important
-        decalage = -1.0
-      }
+      // Décalage plus important pour les sous-titres après la phrase clé
+      const decalage = isAfterProblemStart ? -3.0 : 0
 
       // Calculer le début et la fin avec le décalage approprié
       const debut = Math.max(0, charCount * durationPerChar + decalage)
@@ -281,8 +259,8 @@ Lorsque vous suivez cette voie, vous découvrez une paix intérieure et une clar
 
     const currentTime = mainAudioRef.current.currentTime
 
-    // Ajouter une anticipation beaucoup plus importante pour la vérification
-    const lookAheadTime = currentTime + 0.5 // Anticipation de 500ms
+    // Ajouter une anticipation plus importante pour la vérification
+    const lookAheadTime = currentTime + 0.8 // Anticipation de 800ms
 
     // Trouver le sous-titre correspondant au temps actuel ou imminent
     for (let i = 0; i < sousTitresInfoRef.current.length; i++) {
@@ -314,6 +292,11 @@ Lorsque vous suivez cette voie, vous découvrez une paix intérieure et une clar
           setShowVowelsAnimation(false)
           setShowCircle(true)
           setShowNumberInCircle(false) // Afficher l'image, pas le nombre
+        }
+
+        // Afficher le nombre 7 dans le cercle quand on mentionne le nombre de l'âme
+        if (sousTitreInfo.texte.includes("Votre nombre de l'âme est 7")) {
+          setShowNumberInCircle(true)
         }
 
         return
@@ -361,7 +344,7 @@ Lorsque vous suivez cette voie, vous découvrez une paix intérieure et une clar
       if (updateIntervalRef.current) {
         clearInterval(updateIntervalRef.current)
       }
-      updateIntervalRef.current = setInterval(updateSousTitre, 50) // Vérification plus fréquente (50ms)
+      updateIntervalRef.current = setInterval(updateSousTitre, 30) // Vérification très fréquente (30ms)
 
       // Ajouter un écouteur pour les mises à jour de temps
       audio.addEventListener("timeupdate", updateSousTitre)
