@@ -330,60 +330,41 @@ Lorsque vous suivez cette voie, vous découvrez une paix intérieure et une clar
       // Définir la priorité de chargement élevée
       audio.preload = "auto"
 
-      // Définir la source avec le texte complet
-      audio.src = `/api/speech?text=${encodeURIComponent(texteNarrationComplet)}&t=${Date.now()}&priority=high`
+      // Réduire le délai de mise en mémoire tampon pour commencer plus rapidement
+      audio.autobuffer = true
 
-      // Stocker l'élément audio dans la référence
+      // Stocker l'élément audio dans la référence avant même de définir la source
       mainAudioRef.current = audio
 
-      // Commencer à jouer dès que possible, sans attendre le chargement complet
-      audio.play().catch((e) => {
-        console.error("Erreur lors de la lecture initiale:", e)
-        // Réessayer après un court délai
-        setTimeout(() => {
-          if (audio) {
-            audio.play().catch((err) => console.error("Erreur lors de la seconde tentative:", err))
-          }
-        }, 300)
-      })
+      // Définir la source avec le texte complet et un paramètre de priorité élevée
+      audio.src = `/api/speech?text=${encodeURIComponent(texteNarrationComplet)}&t=${Date.now()}&priority=high&immediate=true`
 
-      // Attendre que les métadonnées soient chargées en parallèle
-      await new Promise<void>((resolve) => {
-        const handleMetadataLoaded = () => {
-          console.log("Audio principal chargé, durée:", audio.duration)
-          setAudioLoaded(true)
-          resolve()
-          audio.removeEventListener("loadedmetadata", handleMetadataLoaded)
-        }
+      // Commencer à jouer immédiatement sans attendre
+      audio.load()
 
-        const handleError = (e: Event) => {
-          console.error("Erreur lors du chargement de l'audio principal:", e)
-          resolve() // Résoudre quand même pour continuer
-          audio.removeEventListener("error", handleError)
-        }
+      // Essayer de jouer dès que possible
+      const playPromise = audio.play()
 
-        audio.addEventListener("loadedmetadata", handleMetadataLoaded)
-        audio.addEventListener("error", handleError)
-
-        // Définir un timeout pour résoudre même si les métadonnées ne se chargent pas
-        setTimeout(() => {
-          audio.removeEventListener("loadedmetadata", handleMetadataLoaded)
-          audio.removeEventListener("error", handleError)
-          resolve()
-        }, 5000)
-      })
-
-      // Préparer les informations de synchronisation des sous-titres
-      if (!isNaN(audio.duration) && audio.duration > 0) {
-        sousTitresInfoRef.current = prepareSousTitresInfo(audio.duration)
-        console.log("Informations de sous-titres préparées:", sousTitresInfoRef.current)
+      if (playPromise !== undefined) {
+        playPromise.catch((e) => {
+          console.error("Erreur lors de la lecture initiale:", e)
+          // Réessayer immédiatement
+          setTimeout(() => {
+            if (audio) {
+              audio.play().catch((err) => console.error("Erreur lors de la seconde tentative:", err))
+            }
+          }, 100) // Réduit à 100ms
+        })
       }
 
-      // Configurer l'intervalle pour mettre à jour les sous-titres
+      // Configurer l'intervalle pour mettre à jour les sous-titres immédiatement
       if (updateIntervalRef.current) {
         clearInterval(updateIntervalRef.current)
       }
-      updateIntervalRef.current = setInterval(updateSousTitre, 100) // Vérification toutes les 100ms
+      updateIntervalRef.current = setInterval(updateSousTitre, 50) // Vérification plus fréquente (50ms)
+
+      // Ajouter un écouteur pour les mises à jour de temps
+      audio.addEventListener("timeupdate", updateSousTitre)
 
       // Configurer l'événement de fin
       audio.onended = () => {
@@ -393,8 +374,17 @@ Lorsque vous suivez cette voie, vous découvrez une paix intérieure et une clar
         }
       }
 
-      // Ajouter un écouteur pour les mises à jour de temps
-      audio.addEventListener("timeupdate", updateSousTitre)
+      // Préparer les informations de synchronisation des sous-titres en parallèle
+      // sans attendre que les métadonnées soient complètement chargées
+      setTimeout(() => {
+        if (audio && !isNaN(audio.duration) && audio.duration > 0) {
+          sousTitresInfoRef.current = prepareSousTitresInfo(audio.duration)
+        } else {
+          // Estimation de la durée basée sur le nombre de caractères (50ms par caractère)
+          const estimatedDuration = texteNarrationComplet.length * 0.05
+          sousTitresInfoRef.current = prepareSousTitresInfo(estimatedDuration)
+        }
+      }, 500)
     } catch (error) {
       console.error("Erreur lors du chargement ou de la lecture de l'audio principal:", error)
     }
@@ -413,24 +403,16 @@ Lorsque vous suivez cette voie, vous découvrez une paix intérieure et une clar
     // Vérifier si l'utilisateur a déjà interagi avec le site
     const hasInteracted = localStorage.getItem("userInteracted") === "true"
     if (hasInteracted) {
-      // Essayer de jouer l'audio après un court délai
-      setTimeout(() => {
-        audio.play().catch((err) => {
-          console.error("Erreur lors de la lecture de l'audio de fond:", err)
-        })
-      }, 100)
+      // Essayer de jouer l'audio immédiatement
+      audio.play().catch((err) => {
+        console.error("Erreur lors de la lecture de l'audio de fond:", err)
+      })
     }
 
-    // Réduire le temps de chargement et démarrer l'audio immédiatement
-    setTimeout(() => {
-      setIsLoading(false)
-
-      // Charger et démarrer l'audio principal immédiatement
-      if (!audioStarted) {
-        setAudioStarted(true)
-        loadAndPlayMainAudio()
-      }
-    }, 500) // Réduit à 500ms au lieu de 1500ms
+    // Démarrer l'audio principal immédiatement sans attendre le chargement complet
+    setIsLoading(false)
+    setAudioStarted(true)
+    loadAndPlayMainAudio()
 
     // Nettoyage
     return () => {

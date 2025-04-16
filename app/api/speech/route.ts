@@ -8,9 +8,13 @@ export async function GET(request: NextRequest) {
     const searchParams = request.nextUrl.searchParams
     const text = searchParams.get("text")
     const timestamp = searchParams.get("t") // Pour éviter la mise en cache
-    const attempt = searchParams.get("attempt") // Pour le suivi des tentatives
+    const priority = searchParams.get("priority") // Pour les requêtes prioritaires
+    const immediate = searchParams.get("immediate") // Pour les requêtes immédiates
 
-    console.log(`Tentative #${attempt || "1"}, timestamp: ${timestamp}`)
+    // Priorité élevée pour les requêtes marquées comme immédiates
+    const isPriority = priority === "high" || immediate === "true"
+
+    console.log(`Priorité: ${isPriority ? "élevée" : "normale"}, timestamp: ${timestamp}`)
 
     if (!text) {
       console.error("Paramètre text manquant")
@@ -34,11 +38,14 @@ export async function GET(request: NextRequest) {
     // Remplacer "lanumerologie.co" par "la numérologie point co" pour la prononciation
     textToSpeech = textToSpeech.replace(/lanumerologie\.co/g, "la numérologie point co")
 
-    // Construire le SSML
+    // Construire le SSML avec une vitesse légèrement plus rapide pour les requêtes immédiates
+    const rate = isPriority ? "+5%" : "0%"
     const ssml = `
       <speak version='1.0' xml:lang='fr-FR'>
         <voice xml:lang='fr-FR' xml:gender='Female' name='fr-FR-VivienneNeural'>
-          ${textToSpeech}
+          <prosody rate="${rate}">
+            ${textToSpeech}
+          </prosody>
         </voice>
       </speak>
     `
@@ -46,11 +53,11 @@ export async function GET(request: NextRequest) {
     try {
       console.log("Appel de l'API Azure Speech...")
 
-      // Utiliser AbortController pour définir un timeout
+      // Utiliser AbortController pour définir un timeout plus court pour les requêtes prioritaires
       const controller = new AbortController()
-      const timeoutId = setTimeout(() => controller.abort(), 240000) // 240 secondes de timeout (4 minutes)
+      const timeoutId = setTimeout(() => controller.abort(), isPriority ? 120000 : 240000)
 
-      // Appeler l'API Azure Speech
+      // Appeler l'API Azure Speech avec une priorité plus élevée pour les requêtes immédiates
       const response = await fetch(`https://${speechRegion}.tts.speech.microsoft.com/cognitiveservices/v1`, {
         method: "POST",
         headers: {
@@ -58,9 +65,12 @@ export async function GET(request: NextRequest) {
           "Content-Type": "application/ssml+xml",
           "X-Microsoft-OutputFormat": "audio-16khz-128kbitrate-mono-mp3",
           "User-Agent": "Numerologist",
+          "X-Priority": isPriority ? "high" : "normal",
         },
         body: ssml,
         signal: controller.signal,
+        // Priorité élevée pour les requêtes immédiates
+        priority: isPriority ? "high" : "auto",
       })
 
       // Nettoyer le timeout
@@ -89,7 +99,7 @@ export async function GET(request: NextRequest) {
       const audioData = await response.arrayBuffer()
       console.log(`Audio généré avec succès, taille: ${audioData.byteLength} octets`)
 
-      // Retourner l'audio avec des en-têtes optimisés
+      // Retourner l'audio avec des en-têtes optimisés pour le streaming
       return new NextResponse(audioData, {
         headers: {
           "Content-Type": "audio/mpeg",
@@ -102,6 +112,8 @@ export async function GET(request: NextRequest) {
           "Access-Control-Allow-Headers": "Content-Type, Authorization",
           "X-Audio-Ready": "true", // En-tête personnalisé pour signaler que l'audio est prêt
           "X-Request-ID": `${Date.now()}-${Math.random().toString(36).substring(2, 15)}`, // ID unique pour éviter la mise en cache
+          "Transfer-Encoding": "chunked", // Permettre le streaming
+          "X-Content-Type-Options": "nosniff",
         },
       })
     } catch (error) {
