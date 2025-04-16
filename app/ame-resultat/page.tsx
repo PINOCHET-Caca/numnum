@@ -288,8 +288,28 @@ Lorsque vous suivez cette voie, vous découvrez une paix intérieure et une clar
 
     const currentTime = mainAudioRef.current.currentTime
 
+    // Phrase spécifique à afficher à un moment précis
+    const phraseSpecifique = "Vous êtes intuitif, puissant et pragmatique."
+
+    // Vérifier si nous sommes dans la plage de temps où cette phrase devrait apparaître
+    // Approximativement à 70% de la durée totale de l'audio
+    if (mainAudioRef.current.duration > 0) {
+      const tempsApproxPhraseSpecifique = mainAudioRef.current.duration * 0.7
+      if (Math.abs(currentTime - tempsApproxPhraseSpecifique) < 5) {
+        // Fenêtre de 5 secondes
+        setSousTitreActuel(phraseSpecifique)
+
+        // Afficher le cercle avec l'image du nombre de l'âme
+        setShowVowelsAnimation(false)
+        setShowCircle(true)
+        setShowNumberInCircle(false)
+
+        return
+      }
+    }
+
     // Ajouter une anticipation plus importante pour la vérification
-    const lookAheadTime = currentTime + 1.2 // Anticipation de 1.2 secondes (augmentée)
+    const lookAheadTime = currentTime + 1.2 // Anticipation de 1.2 secondes
 
     // Trouver le sous-titre correspondant au temps actuel ou imminent
     for (let i = 0; i < sousTitresInfoRef.current.length; i++) {
@@ -298,7 +318,10 @@ Lorsque vous suivez cette voie, vous découvrez une paix intérieure et une clar
         (lookAheadTime >= sousTitreInfo.debut && lookAheadTime < sousTitreInfo.fin) ||
         (currentTime >= sousTitreInfo.debut && currentTime < sousTitreInfo.fin)
       ) {
-        setSousTitreActuel(sousTitreInfo.texte)
+        // Ne pas écraser la phrase spécifique si elle est déjà affichée
+        if (sousTitreActuel !== phraseSpecifique) {
+          setSousTitreActuel(sousTitreInfo.texte)
+        }
 
         // Afficher le tableau quand on commence à parler du nombre de l'âme
         if (sousTitreInfo.texte.includes("Je vais commencer par examiner votre nombre de l'âme")) {
@@ -314,13 +337,6 @@ Lorsque vous suivez cette voie, vous découvrez une paix intérieure et une clar
           setShowTable(false)
           setShowCircle(false) // Cacher complètement le cercle
           setShowVowelsAnimation(true)
-        }
-
-        // Afficher le cercle avec l'image du nombre de l'âme après la phrase spécifique
-        if (sousTitreInfo.texte.includes("Vous êtes intuitif, puissant et pragmatique")) {
-          setShowVowelsAnimation(false)
-          setShowCircle(true)
-          setShowNumberInCircle(false) // Afficher l'image, pas le nombre
         }
 
         // Afficher le nombre 7 dans le cercle quand on mentionne le nombre de l'âme
@@ -420,6 +436,25 @@ Lorsque vous suivez cette voie, vous découvrez une paix intérieure et une clar
       })
     }
   }, [isLoading, mounted, audioStarted, texteNarrationComplet])
+
+  // Effet pour forcer l'affichage de la phrase spécifique après un délai
+  useEffect(() => {
+    if (audioStarted && mainAudioRef.current) {
+      // Forcer l'affichage de la phrase spécifique après 20 secondes
+      const forceTimer = setTimeout(() => {
+        // Vérifier si l'audio est toujours en cours de lecture
+        if (mainAudioRef.current && !mainAudioRef.current.paused) {
+          console.log("Forçage de l'affichage de la phrase spécifique")
+          setSousTitreActuel("Vous êtes intuitif, puissant et pragmatique.")
+          setShowVowelsAnimation(false)
+          setShowCircle(true)
+          setShowNumberInCircle(false)
+        }
+      }, 20000) // 20 secondes après le début de l'audio
+
+      return () => clearTimeout(forceTimer)
+    }
+  }, [audioStarted])
 
   // Gestion du son de fond
   const toggleMute = () => {
