@@ -9,9 +9,18 @@ export async function GET(request: NextRequest) {
     const text = searchParams.get("text")
     const timestamp = searchParams.get("t") // Pour éviter la mise en cache
 
+    const segment = searchParams.get("segment") || "0"
+    console.log(`Traitement du segment ${segment} avec ${text?.length || 0} caractères`)
+
     if (!text) {
       console.error("Paramètre text manquant")
       return NextResponse.json({ error: "Le paramètre text est requis" }, { status: 400 })
+    }
+
+    // Vérifier si le texte n'est pas trop long
+    if (text.length > 5000) {
+      console.error(`Texte trop long: ${text.length} caractères`)
+      return NextResponse.json({ error: "Le texte est trop long (max 5000 caractères)" }, { status: 400 })
     }
 
     // Récupérer les clés d'API Azure Speech

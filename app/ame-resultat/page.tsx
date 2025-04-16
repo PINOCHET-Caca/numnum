@@ -546,13 +546,65 @@ On se retrouve de l'autre côté.`
     if (!isLoading && mounted && !audioStarted) {
       setAudioStarted(true)
 
-      // Créer un nouvel élément audio
+      // Diviser le texte en segments plus petits pour éviter les limites de l'API
+      const maxChars = 1000 // Limite de caractères par requête
+      const segments = []
+      let currentSegment = ""
+
+      // Diviser le texte en respectant les phrases
+      const phrases = texteNarrationComplet.split(/(?<=[.!?])\s+/)
+      for (const phrase of phrases) {
+        if ((currentSegment + phrase).length <= maxChars) {
+          currentSegment += (currentSegment ? " " : "") + phrase
+        } else {
+          if (currentSegment) {
+            segments.push(currentSegment)
+          }
+          currentSegment = phrase
+        }
+      }
+      if (currentSegment) {
+        segments.push(currentSegment)
+      }
+
+      console.log(`Texte divisé en ${segments.length} segments pour la synthèse vocale`)
+
+      // Créer un nouvel élément audio pour le premier segment
       const audio = new Audio()
-      audio.src = `/api/speech?text=${encodeURIComponent(texteNarrationComplet)}`
+      audio.src = `/api/speech?text=${encodeURIComponent(segments[0])}&segment=0`
       audio.volume = 0.8
 
-      // Stocker l'élément audio dans la référence
+      // Stocker l'élément audio et les segments dans des références
       mainAudioRef.current = audio
+
+      // Ajouter un gestionnaire pour charger les segments suivants
+      let currentSegmentIndex = 0
+      audio.addEventListener("ended", () => {
+        currentSegmentIndex++
+        if (currentSegmentIndex < segments.length) {
+          console.log(`Chargement du segment ${currentSegmentIndex}/${segments.length}`)
+          const nextAudio = new Audio()
+          nextAudio.src = `/api/speech?text=${encodeURIComponent(segments[currentSegmentIndex])}&segment=${currentSegmentIndex}`
+          nextAudio.volume = 0.8
+
+          // Transférer les écouteurs d'événements
+          nextAudio.addEventListener("timeupdate", updateSousTitre)
+
+          // Récursion pour les segments suivants
+          nextAudio.addEventListener("ended", audio.onended)
+
+          // Remplacer l'audio actuel
+          mainAudioRef.current = nextAudio
+          nextAudio.play().catch((error) => {
+            console.error(`Erreur lors de la lecture du segment ${currentSegmentIndex}:`, error)
+          })
+        } else {
+          console.log("Tous les segments audio ont été lus")
+          if (updateIntervalRef.current) {
+            clearInterval(updateIntervalRef.current)
+          }
+        }
+      })
 
       // Configurer l'événement de chargement
       audio.onloadedmetadata = () => {
@@ -570,14 +622,6 @@ On se retrouve de l'autre côté.`
 
       // Ajouter un écouteur pour les mises à jour de temps
       audio.addEventListener("timeupdate", updateSousTitre)
-
-      // Configurer l'événement de fin
-      audio.onended = () => {
-        console.log("Audio principal terminé")
-        if (updateIntervalRef.current) {
-          clearInterval(updateIntervalRef.current)
-        }
-      }
 
       // Démarrer la lecture
       audio.play().catch((error) => {
