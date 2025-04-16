@@ -14,29 +14,26 @@ import { VowelsAnimation } from "@/components/vowels-animation"
 // Remplacer la fonction diviserEnSegmentsCourts par cette version améliorée qui préserve les phrases importantes
 
 const diviserEnSegmentsCourts = (texte: string): string[] => {
-  // Phrases importantes à préserver intactes
-  const phrasesImportantes = [
-    "Vous êtes intuitif, puissant et pragmatique.",
-    "Votre nombre de l'âme est 7, le nombre de la sagesse intérieure et de la spiritualité.",
-  ]
+  // Phrase spécifique à préserver
+  const phraseSpecifique = "Vous êtes intuitif, puissant et pragmatique."
 
-  // Vérifier si une des phrases importantes est présente dans le texte
-  for (const phrase of phrasesImportantes) {
-    if (texte.includes(phrase)) {
-      // Diviser le texte autour de cette phrase importante
-      const parties = texte.split(phrase)
+  // Vérifier si la phrase spécifique est présente
+  if (texte.includes(phraseSpecifique)) {
+    // Diviser le texte en trois parties: avant, la phrase spécifique, et après
+    const parties = texte.split(phraseSpecifique)
 
-      // Traiter les parties avant et après la phrase importante
-      const segmentsAvant = diviserPartieEnSegments(parties[0])
-      const segmentsApres = parties.length > 1 ? diviserPartieEnSegments(parties[1]) : []
+    // Diviser la partie avant en segments
+    const segmentsAvant = parties[0].split(/(?<=[.!?])\s+/).filter((s) => s.trim())
 
-      // Combiner les segments avec la phrase importante préservée
-      return [...segmentsAvant, phrase, ...segmentsApres]
-    }
+    // Diviser la partie après en segments
+    const segmentsApres = parties[1].split(/(?<=[.!?])\s+/).filter((s) => s.trim())
+
+    // Retourner tous les segments avec la phrase spécifique au milieu
+    return [...segmentsAvant, phraseSpecifique, ...segmentsApres]
   }
 
-  // Si aucune phrase importante n'est trouvée, utiliser la méthode standard
-  return diviserPartieEnSegments(texte)
+  // Si la phrase spécifique n'est pas trouvée, diviser normalement
+  return texte.split(/(?<=[.!?])\s+/).filter((s) => s.trim())
 }
 
 // Fonction auxiliaire pour diviser une partie du texte en segments
@@ -284,63 +281,48 @@ Lorsque vous suivez cette voie, vous découvrez une paix intérieure et une clar
 
   // Fonction pour mettre à jour le sous-titre en fonction du temps actuel
   const updateSousTitre = () => {
-    if (!mainAudioRef.current || sousTitresInfoRef.current.length === 0) return
+    if (!mainAudioRef.current) return
 
     const currentTime = mainAudioRef.current.currentTime
+    const totalDuration = mainAudioRef.current.duration || 100
 
-    // Phrase spécifique à afficher à un moment précis
+    // Phrase spécifique à afficher
     const phraseSpecifique = "Vous êtes intuitif, puissant et pragmatique."
 
-    // Vérifier si nous sommes dans la plage de temps où cette phrase devrait apparaître
-    // Approximativement à 70% de la durée totale de l'audio
-    if (mainAudioRef.current.duration > 0) {
-      const tempsApproxPhraseSpecifique = mainAudioRef.current.duration * 0.7
-      if (Math.abs(currentTime - tempsApproxPhraseSpecifique) < 5) {
-        // Fenêtre de 5 secondes
-        setSousTitreActuel(phraseSpecifique)
+    // Forcer l'affichage de la phrase spécifique entre 65% et 75% de la durée totale
+    const startTimeForPhrase = totalDuration * 0.65
+    const endTimeForPhrase = totalDuration * 0.75
 
-        // Afficher le cercle avec l'image du nombre de l'âme
-        setShowVowelsAnimation(false)
-        setShowCircle(true)
-        setShowNumberInCircle(false)
-
-        return
-      }
+    if (currentTime >= startTimeForPhrase && currentTime <= endTimeForPhrase) {
+      setSousTitreActuel(phraseSpecifique)
+      setShowVowelsAnimation(false)
+      setShowCircle(true)
+      setShowNumberInCircle(false)
+      return
     }
 
-    // Ajouter une anticipation plus importante pour la vérification
-    const lookAheadTime = currentTime + 1.2 // Anticipation de 1.2 secondes
+    // Pour les autres moments, trouver le sous-titre correspondant
+    if (sousTitresInfoRef.current.length === 0) return
 
-    // Trouver le sous-titre correspondant au temps actuel ou imminent
     for (let i = 0; i < sousTitresInfoRef.current.length; i++) {
       const sousTitreInfo = sousTitresInfoRef.current[i]
-      if (
-        (lookAheadTime >= sousTitreInfo.debut && lookAheadTime < sousTitreInfo.fin) ||
-        (currentTime >= sousTitreInfo.debut && currentTime < sousTitreInfo.fin)
-      ) {
-        // Ne pas écraser la phrase spécifique si elle est déjà affichée
-        if (sousTitreActuel !== phraseSpecifique) {
+      if (currentTime >= sousTitreInfo.debut && currentTime < sousTitreInfo.fin) {
+        // Ne pas écraser la phrase spécifique si on est dans sa plage de temps
+        if (currentTime < startTimeForPhrase || currentTime > endTimeForPhrase) {
           setSousTitreActuel(sousTitreInfo.texte)
         }
 
-        // Afficher le tableau quand on commence à parler du nombre de l'âme
+        // Logique pour les transitions visuelles
         if (sousTitreInfo.texte.includes("Je vais commencer par examiner votre nombre de l'âme")) {
           setShowCircle(false)
           setShowTable(true)
-          // Forcer le rendu du tableau avec une nouvelle clé et état forceRender
           setTableKey((prev) => prev + 1)
           setTableForceRender((prev) => !prev)
-        }
-
-        // Afficher la nouvelle animation des voyelles quand on atteint la phrase spécifique
-        if (sousTitreInfo.texte.includes("Les voyelles, en revanche, sont prononcées avec un souffle fluide")) {
+        } else if (sousTitreInfo.texte.includes("Les voyelles, en revanche, sont prononcées avec un souffle fluide")) {
           setShowTable(false)
-          setShowCircle(false) // Cacher complètement le cercle
+          setShowCircle(false)
           setShowVowelsAnimation(true)
-        }
-
-        // Afficher le nombre 7 dans le cercle quand on mentionne le nombre de l'âme
-        if (sousTitreInfo.texte.includes("Votre nombre de l'âme est 7")) {
+        } else if (sousTitreInfo.texte.includes("Votre nombre de l'âme est 7")) {
           setShowNumberInCircle(true)
         }
 
@@ -439,20 +421,29 @@ Lorsque vous suivez cette voie, vous découvrez une paix intérieure et une clar
 
   // Effet pour forcer l'affichage de la phrase spécifique après un délai
   useEffect(() => {
-    if (audioStarted && mainAudioRef.current) {
-      // Forcer l'affichage de la phrase spécifique après 20 secondes
-      const forceTimer = setTimeout(() => {
-        // Vérifier si l'audio est toujours en cours de lecture
-        if (mainAudioRef.current && !mainAudioRef.current.paused) {
-          console.log("Forçage de l'affichage de la phrase spécifique")
-          setSousTitreActuel("Vous êtes intuitif, puissant et pragmatique.")
-          setShowVowelsAnimation(false)
-          setShowCircle(true)
-          setShowNumberInCircle(false)
-        }
-      }, 20000) // 20 secondes après le début de l'audio
+    if (audioStarted) {
+      // Forcer l'affichage de la phrase spécifique après 30 secondes
+      const forceTimer1 = setTimeout(() => {
+        console.log("Premier forçage de l'affichage de la phrase spécifique")
+        setSousTitreActuel("Vous êtes intuitif, puissant et pragmatique.")
+        setShowVowelsAnimation(false)
+        setShowCircle(true)
+        setShowNumberInCircle(false)
+      }, 30000)
 
-      return () => clearTimeout(forceTimer)
+      // Forcer à nouveau après 60 secondes au cas où
+      const forceTimer2 = setTimeout(() => {
+        console.log("Second forçage de l'affichage de la phrase spécifique")
+        setSousTitreActuel("Vous êtes intuitif, puissant et pragmatique.")
+        setShowVowelsAnimation(false)
+        setShowCircle(true)
+        setShowNumberInCircle(false)
+      }, 60000)
+
+      return () => {
+        clearTimeout(forceTimer1)
+        clearTimeout(forceTimer2)
+      }
     }
   }, [audioStarted])
 
