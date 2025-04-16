@@ -156,7 +156,7 @@ export default function AmeResultat() {
   const genreUtilisateur = determinerGenre(prenom)
 
   // Texte de narration complet - UTILISER EXACTEMENT LE TEXTE FOURNI
-  const texteNarrationComplet = `${prenom}, j'ai réuni toutes les informations nécessaires pour compléter votre lecture de numérologie personnalisée, et comme vous l'aurez deviné : j'ai gardé le meilleur pour la fin.
+  const texteNarrationComplet = `${prenom} j'ai réuni toutes les informations nécessaires pour compléter votre lecture de numérologie personnalisée, et comme vous l'aurez deviné : j'ai gardé le meilleur pour la fin.
 
 Mais avant de commencer, je dois vous avertir.
 
@@ -188,33 +188,209 @@ Le célèbre médecin, traducteur et astrologue de la Renaissance, Marc Clio Pac
 
 Les bienfaits qu'il a observés étaient indéniables.
 
+Alors, êtes-vous curieux de savoir ce que révèle votre nombre de l'âme ?
+
+Après avoir analysé les voyelles de votre nom et prénom, j'ai découvert que votre nombre de l'âme est le maître nombre (mettre nombre de l'âme).
+
+Que vous en ayez conscience ou non, vous avez tout ce qu'il faut pour connaître un succès fulgurant, tant sur le plan spirituel que matériel.
+
 Vous êtes intuitif, puissant et pragmatique.
 
-Votre nombre de l'âme est 7, le nombre de la sagesse intérieure et de la spiritualité.
+Vous ressentez un appel profond à être un bâtisseur accompli et à créer un héritage qui soutiendra les générations futures.
 
-Ce nombre indique que vous avez une profonde vie intérieure et une forte intuition que vous utilisez pour naviguer dans le monde.
+Vous êtes probablement impliqué dans un travail qui profite à un grand nombre de personnes.
 
-Vous êtes naturellement analytique et réfléchi, préférant comprendre les mécanismes cachés derrière les apparences.
+Vous avez des idéaux élevés, mais vous savez aussi garder les pieds sur terre.
 
-Votre esprit est vif et perspicace, capable de percer à jour les illusions et de voir la vérité derrière les façades.
+Vous détestez les tâches monotones, mais c'est simplement parce que votre âme aspire à créer et à évoluer.
 
-Cette capacité vous donne un avantage unique dans la vie, car vous pouvez anticiper les événements et comprendre les motivations des autres avant même qu'ils ne les expriment.
+Vous avez tendance à surestimer vos capacités et à accepter des tâches pour lesquelles vous n'êtes pas toujours préparé, dans le but de plaire aux autres.
 
-Cependant, cette profondeur peut parfois vous isoler, car peu de personnes partagent votre niveau de perception et d'introspection.
+Cela peut vous laisser un sentiment d'accablement et de frustration.
 
-Vous avez besoin de temps seul pour recharger vos batteries et explorer vos pensées.
+En tant que maître nombre, vous avez un potentiel supérieur à la moyenne.
 
-Ne considérez pas cela comme une faiblesse, mais plutôt comme une force qui vous permet de maintenir votre équilibre intérieur.
+Restez discipliné et laissez les autres vous soutenir, et il ne fait aucun doute que vous atteindrez la créativité, l'abondance et l'épanouissement auxquels aspire votre âme.
 
-Votre âme aspire à la connaissance, à la vérité et à la compréhension profonde de l'univers et de votre place en son sein.
+En ce qui concerne les relations, vous êtes très pragmatique.
 
-Vous êtes attiré par les mystères de la vie et les questions existentielles.
+Vous valorisez la compagnie et la croissance personnelle.
 
-Cette quête de sens est au cœur de votre être et guide vos choix, même si vous n'en êtes pas toujours conscient.
+Vous vous épanouissez avec un partenaire qui vous soutient, et la bonne personne pourra propulser votre succès encore plus loin.
 
-Pour vous épanouir pleinement, il est essentiel que vous honoriez ce besoin d'exploration spirituelle et intellectuelle.
+Vous êtes perceptif, romantique et capable d'une connexion profonde.
 
-Lorsque vous suivez cette voie, vous découvrez une paix intérieure et une clarté qui illuminent tous les aspects de votre vie.`
+Mais ce n'est pas tout ce que j'ai découvert sur vous ${prenom}.
+
+Comme un oignon, vous avez de nombreuses couches.
+
+En creusant plus profondément dans votre profil de numérologie, j'ai constaté que vous possédez de nombreux traits uniques et particularités de personnalité.
+
+J'ai le sentiment que vous êtes imprévisible et un peu anticonformiste.
+
+Ce qui plaît généralement aux autres femmes ne vous intéressent pas vraiment.
+
+Vous êtes intransigeant et refusez de vous contenter du minimum.
+
+Parce que vous êtes une belle femme, vous attirez souvent des partenaires qui ne s'intéressent qu'à votre apparence.
+
+Cela peut être frustrant, car vous êtes incroyablement intelligente et avez une âme profonde.
+
+Vous avez tendance à être perfectionniste et compétitive dans le milieu professionnel.
+
+Vous êtes expressive, avez un but clair et n'avez pas peur d'aller chercher ce que vous voulez.
+
+J'ai le sentiment que vous avez occupé ou occupez actuellement un poste traditionnellement réservé aux hommes. 
+
+Je vous vois bien habillée et accomplissant tout ce que vous entreprenez.
+
+Vous avez une confiance que peu de gens possèdent.
+
+Cela ne signifie pas que vous êtes agressive ou autoritaire, mais vous n'avez pas peur de prendre des risques.
+
+Cela fait de vous une personne entreprenante et loin de la définition traditionnelle du rôle domestique.
+
+Même si vous épousiez un millionnaire, vous auriez toujours vos propres projets et objectifs.
+
+Vous avez un esprit curieux et analytique qui a besoin d'être stimulé.
+
+Vous êtes intuitive, perspicace et animée, avec d'excellentes compétences en communication et un sens de la diplomatie.
+
+Bien que vous ayez connu du succès dans votre vie, vous avez peut-être eu des difficultés dans le domaine sentimental.
+
+Cependant, cela tient plus à votre exigence qu'à une quelconque malédiction.
+
+Vous êtes sélective et attendez beaucoup des autres.
+
+Bien que parfois un peu têtue et difficile à satisfaire, vous n'êtes ni arrogante ni vaniteuse.
+
+En raison de votre énergie rare et puissante, un partenaire jaloux, manquant de confiance en lui ou trop contrôlant n'aura que peu de chances de rester à vos côtés.
+
+J'ai le sentiment que vous avez récemment été, ou serez bientôt, impliquée dans une relation à long terme (peut-être deux à trois ans), où l'amour platonique dominera sur la passion.
+
+Cette personne vous aime beaucoup et vous vous sentez en sécurité avec elle, mais ce n'est pas votre grand amour.
+
+La personne qui vous fera perdre la tête est encore à venir.
+
+Elle sera confiante et raisonnable, tout comme vous, et vous aurez beaucoup en commun.
+
+Dès votre rencontre, il y aura une forte alchimie, et votre vie en sera transformée.
+
+Le meilleur reste à venir.
+
+Dans un avenir très proche, un nouveau départ s'annonce.
+
+Vous accomplirez plus dans les prochaines années que vous ne l'avez fait auparavant.
+
+Vous réaliserez tout ce que vous voulez dans la vie de toute façon.
+
+Cela peut être difficile à croire, mais les informations que je vous ai partagées au cours des dernières minutes ne font qu'effleurer la surface de ce que je peux découvrir sur vous.
+
+Après avoir examiné uniquement votre chemin de vie, votre nombre d'expression et votre nombre de l'âme, je peux dire que vous avez une combinaison de nombres vraiment unique.
+
+En fait, il n'y a rien que j'aimerais plus que de passer des heures à explorer chaque aspect de votre thème.
+
+Jusqu'à présent, je vous ai juste donné un bref aperçu, et bien que j'espère que ces courtes lectures vous donnent un avant-goût de qui vous êtes et de ce dont vous êtes vraiment capable, si vous vous arrêtez ici, vous partirez probablement avec plus de questions que de réponses.
+
+Je ne veux rien de plus que de vous voir réussir, de vous donner la confirmation et la confiance que vous cherchez, de vous diriger sans excuses vers vos désirs les plus profonds et de manifester la vie et l'abondance que vous méritez immédiatement.
+
+Il me reste beaucoup à vous dire, et franchement, la plupart sont bien trop personnels pour être partagés ici
+
+Donc, si vous êtes ouverte à cela, j'aimerais vous envoyer votre rapport complet de décodeur de personnalité.
+
+Votre Décodeur de Personnalité est un rapport complet, précis et entièrement personnalisé des cinq nombres les plus révélateurs de votre profil numérologique.
+
+Vous devez savoir dès maintenant que votre combinaison unique de ces cinq nombres révèle beaucoup sur vous et sur la vie que vous êtes destinée à vivre.
+
+Cela éclaircira où vous en êtes dans votre vie en ce moment et comment vous y êtes arrivée.
+
+Cela vous aidera à comprendre vos relations, vos désirs romantiques, vos attractions inexplicables et vos chagrins passés.
+
+Cela expliquera pourquoi vous avez pris certaines décisions de carrière, subi des problèmes financiers, et où vous êtes censée concentrer votre temps, votre attention et vos ressources pour manifester la richesse et l'abondance plus facilement.
+
+Inspirez votre objectif et guidez-vous fidèlement vers votre plus haut potentiel afin que vous puissiez tirer le meilleur parti de chaque instant dès aujourd'hui.
+
+Donc, si vous êtes prête, cliquez simplement sur le bouton ci-dessous et en quelques secondes, nous commencerons à compiler votre rapport de Décodeur de Personnalité.
+
+Cela inclut non seulement des versions étendues des lectures que je viens de vous donner, mais aussi des interprétations détaillées et approfondies des autres éléments centraux de votre thème.
+
+Ce rapport complet de 36 pages est conçu pour vous montrer, peut-être pour la première fois, comment toutes les diverses parties de votre personnalité se sont réunies pour créer l'être puissant et sans limites que vous êtes.
+
+Il vous donne tout ce dont vous avez besoin pour prendre des décisions autonomes et prendre le contrôle de votre destin sans remplissage ni fioritures.
+
+Cliquez sur le bouton ci-dessous maintenant pour vous rendre sur notre page de commande sûre et sécurisée pour finaliser votre achat.
+
+Dans quelques minutes, vous obtiendrez des lectures personnalisées sur les défis inhérents présents dans votre thème, révélés par le côté sombre de vos nombres. 
+
+Personne n'est parfait, mais ces interprétations puissantes éclaireront vos défauts innés et comment travailler avec eux pour attirer le partenaire de vie et l'abondance que vous désirez.
+
+Vous recevrez des conseils puissants sur la manière de calculer votre code de personnalité sacré afin que vous puissiez comprendre intimement et immédiatement votre propre profil numérologique et effectuer des calculs et des lectures pour vos amis et votre famille. 
+
+Et vous découvrirez les quatre choses que vous devez faire aujourd'hui pour nourrir votre esprit et apporter plus de bonheur et d'abondance dans votre vie.
+
+Vous ne pouvez plus vous permettre d'ignorer les vérités époustouflantes cachées de votre profil numérologique.
+
+Ce rapport est normalement vendu au prix de 29€, mais j'aimerais vous l'offrir aujourd'hui uniquement à un prix très spécial et fortement réduit. 
+
+Ce prix n'est disponible que sur cette page, donc si vous choisissez de refuser votre réduction, il y a de fortes chances que vous ne la revoyiez jamais.
+
+Mais voici le truc, je suis tellement convaincue qu'une fois armé des réponses et des conseils que vous recevrez de votre rapport de Décodeur de Personnalité, cette année sera votre année la plus transformatrice, abondante et épanouissante pour vous. 
+
+Pourtant, même si nous offrons cette réduction unique, vous bénéficiez toujours d'une garantie de remboursement de 365 jours.
+
+Dans le cas improbable où vous ne seriez pas époustouflé par votre Décodeur de Personnalité, envoyez simplement un email à support@lanumerologie.co et nous vous rembourserons rapidement et joyeusement chaque centime. 
+
+Sans tracas, sans questions, et sans obstacles à franchir. 
+
+Cependant, si vous êtes comme la plupart de mes lecteurs, vous ne le ferez tout simplement pas.
+
+Plus de 98% de nos lecteurs adorent leur rapport de Décodeur de Personnalité. 
+
+Vous êtes à un carrefour en ce moment, et vraiment, vous n'avez que deux options très différentes menant à deux vies très différentes. 
+
+La première option est de quitter cette page sans votre rapport de Décodeur de Personnalité. 
+
+Je pense que vous savez déjà où cela vous mènera.
+
+Nulle part, vous resterez là où vous êtes, coincé dans une vie de désespoir silencieux.
+
+C'est pourquoi vous devriez sérieusement envisager la deuxième option, qui est de faire une petite action aujourd'hui qui aura un impact incroyable sur le reste de votre vie. 
+
+Découvrir vos forces, surmonter vos faiblesses et vivre la vie incroyable pour laquelle vous êtes née.
+
+Je vous invite à entreprendre ce voyage avec nous pour découvrir les incroyables révélations de votre profil numérologique, avec votre propre rapport de Décodeur de Personnalité. 
+
+Vous n'avez absolument rien à perdre et tout un univers d'abondance illimitée à gagner.
+
+Si vous choisissez de refuser cette offre, vous risquez de passer à côté d'une occasion précieuse de mieux vous comprendre et d'avancer vers la vie que vous méritez.
+
+Chaque minute qui passe est une minute où vous restez vulnérable à ce qui arrive.
+
+Une minute de plus où votre potentiel d'abondance reste inexploité.
+
+Ne laissez pas cette opportunité unique vous glisser entre les doigts.
+
+Ne vous retrouvez pas dans quelques mois à regarder votre compte en banque, ou vos relations le cœur serré, en pensant :
+
+"Si seulement j'avais agi quand j'en avais l'occasion..."
+
+Cliquez sur le bouton ci-dessous maintenant ${prenom}.
+
+Ce n'est pas un hasard si vous êtes arrivé sur cette page et si vous avez écouté cette vidéo. 
+
+Vous savez au fond de vous que c'est la solution à vos problèmes.
+
+Donc, allez-y, recevez votre Décodeur de Personnalité aujourd'hui tant qu'il n'est pas trop tard en cliquant sur le bouton ci-dessous de cette vidéo.
+
+Le temps presse.
+
+Chaque seconde compte.
+
+Un avenir de prospérité illimitée vous attend de l'autre côté…
+
+Faites le choix d'explorer votre potentiel et de prendre le contrôle de votre destinée dès maintenant ${prenom}.
+
+On se retrouve de l'autre côté.`
 
   // Diviser le texte en segments courts (2 lignes max)
   const sousTitres = diviserEnSegmentsCourts(texteNarrationComplet)
@@ -305,7 +481,12 @@ Lorsque vous suivez cette voie, vous découvrez une paix intérieure et une clar
           setShowTable(false) // Cacher le tableau
           setShowCircle(false) // Cacher le cercle
           setShowVowelsAnimation(true) // Afficher l'animation des voyelles
-        } else if (sousTitreInfo.texte.includes("Votre nombre de l'âme est 7")) {
+        } else if (sousTitreInfo.texte.includes("Vous êtes intuitif, puissant et pragmatique")) {
+          setShowVowelsAnimation(false) // Cacher l'animation des voyelles
+          setShowCircle(true) // Afficher le cercle
+          setShowTable(false) // Cacher le tableau
+          setShowNumberInCircle(false) // Ne pas afficher le nombre dans le cercle
+        } else if (sousTitreInfo.texte.includes("Après avoir analysé les voyelles de votre nom et prénom")) {
           setShowVowelsAnimation(false) // Cacher l'animation des voyelles
           setShowCircle(true) // Afficher le cercle
           setShowTable(false) // Cacher le tableau
