@@ -122,6 +122,8 @@ export default function AmeResultat() {
   const [tableKey, setTableKey] = useState(0) // Clé pour forcer le rendu du tableau
   const [tableForceRender, setTableForceRender] = useState(false) // État pour forcer le rendu du tableau
   const [audioLoaded, setAudioLoaded] = useState(false)
+  const [currentSousTitreIndex, setCurrentSousTitreIndex] = useState(-1)
+  const [sousTitresState, setSousTitres] = useState<string[]>([])
 
   // Ajouter un nouvel état pour contrôler l'affichage de l'animation des voyelles
   const [showVowelsAnimation, setShowVowelsAnimation] = useState(false)
@@ -131,6 +133,7 @@ export default function AmeResultat() {
   const mainAudioRef = useRef<HTMLAudioElement | null>(null)
   const sousTitresInfoRef = useRef<SousTitreInfo[]>([])
   const updateIntervalRef = useRef<NodeJS.Timeout | null>(null)
+  const currentAudioRef = useRef<HTMLAudioElement | null>(null)
 
   // Fonction pour déterminer si un prénom est masculin ou féminin
   const determinerGenre = (prenom: string): "masculin" | "feminin" => {
@@ -180,6 +183,8 @@ Vous ne saviez probablement même pas que vous les aviez.
 Le célèbre médecin, traducteur et astrologue de la Renaissance, Marc Clio Pacino, a consacré une grande partie de sa vie à étudier les incroyables façons dont la vie d'une personne s'améliore lorsqu'elle suit les élans de son âme.
 
 Les bienfaits qu'il a observés étaient indéniables.
+
+Vous êtes intuitif, puissant et pragmatique.
 
 Alors, êtes-vous curieux de savoir ce que révèle votre nombre de l'âme ?`
 
@@ -250,38 +255,41 @@ Alors, êtes-vous curieux de savoir ce que révèle votre nombre de l'âme ?`
 
   // Fonction pour mettre à jour le sous-titre en fonction du temps actuel
   const updateSousTitre = () => {
-    if (!mainAudioRef.current || sousTitresInfoRef.current.length === 0) return
+    if (!currentAudioRef.current || sousTitresInfoRef.current.length === 0) return
 
-    const currentTime = mainAudioRef.current.currentTime
+    const currentTime = currentAudioRef.current.currentTime
 
-    // Ajouter une anticipation beaucoup plus importante pour la vérification
-    const lookAheadTime = currentTime + 0.5 // Anticipation de 500ms
-
-    // Trouver le sous-titre correspondant au temps actuel ou imminent
+    // Trouver le sous-titre correspondant au temps actuel
     for (let i = 0; i < sousTitresInfoRef.current.length; i++) {
       const sousTitreInfo = sousTitresInfoRef.current[i]
-      if (
-        (lookAheadTime >= sousTitreInfo.debut && lookAheadTime < sousTitreInfo.fin) ||
-        (currentTime >= sousTitreInfo.debut && currentTime < sousTitreInfo.fin)
-      ) {
-        setSousTitreActuel(sousTitreInfo.texte)
+      if (currentTime >= sousTitreInfo.debut && currentTime < sousTitreInfo.fin) {
+        if (i !== currentSousTitreIndex) {
+          setCurrentSousTitreIndex(i)
+          setSousTitres([sousTitreInfo.texte])
 
-        // Afficher le tableau quand on commence à parler du nombre de l'âme
-        if (sousTitreInfo.texte.includes("Je vais commencer par examiner votre nombre de l'âme")) {
-          setShowCircle(false)
-          setShowTable(true)
-          // Forcer le rendu du tableau avec une nouvelle clé et état forceRender
-          setTableKey((prev) => prev + 1)
-          setTableForceRender((prev) => !prev)
+          // Afficher le tableau quand on commence à parler du nombre de l'âme
+          if (sousTitreInfo.texte.includes("Je vais commencer par examiner votre nombre de l'âme")) {
+            setShowCircle(false)
+            setShowTable(true)
+            // Forcer le rendu du tableau avec une nouvelle clé et état forceRender
+            setTableKey((prev) => prev + 1)
+            setTableForceRender((prev) => !prev)
+          }
+
+          // Afficher la nouvelle animation des voyelles quand on atteint la phrase spécifique
+          if (sousTitreInfo.texte.includes("Les voyelles, en revanche, sont prononcées avec un souffle fluide")) {
+            setShowTable(false)
+            setShowCircle(false) // Cacher complètement le cercle
+            setShowVowelsAnimation(true)
+          }
+
+          // Afficher le cercle avec l'image du nombre de l'âme après la phrase spécifique
+          if (sousTitreInfo.texte.includes("Vous êtes intuitif, puissant et pragmatique")) {
+            setShowVowelsAnimation(false)
+            setShowCircle(true)
+            setShowNumberInCircle(false) // Afficher l'image, pas le nombre
+          }
         }
-
-        // Afficher la nouvelle animation des voyelles quand on atteint la phrase spécifique
-        if (sousTitreInfo.texte.includes("Les voyelles, en revanche, sont prononcées avec un souffle fluide")) {
-          setShowTable(false)
-          setShowCircle(false) // Cacher complètement le cercle
-          setShowVowelsAnimation(true)
-        }
-
         return
       }
     }
@@ -301,6 +309,7 @@ Alors, êtes-vous curieux de savoir ce que révèle votre nombre de l'âme ?`
 
       // Stocker l'élément audio dans la référence
       mainAudioRef.current = audio
+      currentAudioRef.current = audio
 
       // Commencer à jouer dès que possible, sans attendre le chargement complet
       const playPromise = audio.play().catch((e) => {
