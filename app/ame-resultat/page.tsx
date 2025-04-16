@@ -616,36 +616,48 @@ On se retrouve de l'autre côté.`
             sousTitresInfoRef.current = prepareSousTitresInfo(firstAudio.duration * segments.length)
           }
 
-          // Démarrer la lecture immédiatement
-          await firstAudio.play()
-
-          // Jouer les segments suivants en séquence
-          let currentSegmentIndex = 0
-          firstAudio.addEventListener("ended", async function playNext() {
-            currentSegmentIndex++
-            if (currentSegmentIndex < segments.length) {
-              console.log(`Lecture du segment ${currentSegmentIndex}/${segments.length}`)
-              try {
-                // Attendre que le segment soit préchargé
-                const nextAudio = await audioPromises[currentSegmentIndex]
-
-                // Transférer les écouteurs d'événements
-                nextAudio.addEventListener("timeupdate", updateSousTitre)
-                nextAudio.addEventListener("ended", playNext)
-
-                // Remplacer l'audio actuel
-                mainAudioRef.current = nextAudio
-                await nextAudio.play()
-              } catch (error) {
-                console.error(`Erreur lors de la lecture du segment ${currentSegmentIndex}:`, error)
-              }
-            } else {
+          // Fonction récursive pour jouer les segments en séquence
+          const playNextSegment = async (index) => {
+            if (index >= segments.length) {
               console.log("Tous les segments audio ont été lus")
               if (updateIntervalRef.current) {
                 clearInterval(updateIntervalRef.current)
               }
+              return
             }
-          })
+
+            try {
+              console.log(`Lecture du segment ${index}/${segments.length}`)
+              // Attendre que le segment soit préchargé
+              const audio = await audioPromises[index]
+
+              // Stocker l'audio actuel
+              mainAudioRef.current = audio
+
+              // Ajouter l'écouteur pour les mises à jour de temps
+              audio.addEventListener("timeupdate", updateSousTitre)
+
+              // Ajouter l'écouteur pour passer au segment suivant
+              audio.onended = () => {
+                console.log(`Segment ${index} terminé, passage au suivant`)
+                playNextSegment(index + 1)
+              }
+
+              // Démarrer la lecture
+              await audio.play().catch((error) => {
+                console.error(`Erreur lors de la lecture du segment ${index}:`, error)
+                // En cas d'erreur, passer au segment suivant
+                playNextSegment(index + 1)
+              })
+            } catch (error) {
+              console.error(`Erreur lors de la lecture du segment ${index}:`, error)
+              // En cas d'erreur, passer au segment suivant
+              playNextSegment(index + 1)
+            }
+          }
+
+          // Démarrer la séquence de lecture
+          playNextSegment(0)
         } catch (error) {
           console.error("Erreur lors de la lecture audio:", error)
         }
