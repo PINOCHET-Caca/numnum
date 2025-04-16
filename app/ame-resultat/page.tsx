@@ -10,8 +10,37 @@ import { prenomsFeminins } from "@/utils/prenoms-feminins"
 import { NumerologyTableAme } from "@/components/numerology-table-ame"
 import { VowelsAnimation } from "@/components/vowels-animation"
 
-// Fonction pour diviser un texte en segments courts (2 lignes max) pour les sous-titres
+// Vérifier que la phrase clé est correctement incluse dans le texte de narration
+// Remplacer la fonction diviserEnSegmentsCourts par cette version améliorée qui préserve les phrases importantes
+
 const diviserEnSegmentsCourts = (texte: string): string[] => {
+  // Phrases importantes à préserver intactes
+  const phrasesImportantes = [
+    "Vous êtes intuitif, puissant et pragmatique.",
+    "Votre nombre de l'âme est 7, le nombre de la sagesse intérieure et de la spiritualité.",
+  ]
+
+  // Vérifier si une des phrases importantes est présente dans le texte
+  for (const phrase of phrasesImportantes) {
+    if (texte.includes(phrase)) {
+      // Diviser le texte autour de cette phrase importante
+      const parties = texte.split(phrase)
+
+      // Traiter les parties avant et après la phrase importante
+      const segmentsAvant = diviserPartieEnSegments(parties[0])
+      const segmentsApres = parties.length > 1 ? diviserPartieEnSegments(parties[1]) : []
+
+      // Combiner les segments avec la phrase importante préservée
+      return [...segmentsAvant, phrase, ...segmentsApres]
+    }
+  }
+
+  // Si aucune phrase importante n'est trouvée, utiliser la méthode standard
+  return diviserPartieEnSegments(texte)
+}
+
+// Fonction auxiliaire pour diviser une partie du texte en segments
+const diviserPartieEnSegments = (texte: string): string[] => {
   // Longueur maximale pour 2 lignes (environ 100 caractères)
   const longueurMax = 100
 
