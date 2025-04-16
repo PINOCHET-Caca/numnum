@@ -110,7 +110,6 @@ export default function AmeResultat() {
   }, [prenom])
 
   const [isLoading, setIsLoading] = useState(true)
-  // Pas d'état de chargement audio séparé
   const [mounted, setMounted] = useState(false)
   const [showCircle, setShowCircle] = useState(true)
   const [showNumberInCircle, setShowNumberInCircle] = useState(false)
@@ -122,8 +121,6 @@ export default function AmeResultat() {
   const [tableKey, setTableKey] = useState(0) // Clé pour forcer le rendu du tableau
   const [tableForceRender, setTableForceRender] = useState(false) // État pour forcer le rendu du tableau
   const [audioLoaded, setAudioLoaded] = useState(false)
-  const [currentSousTitreIndex, setCurrentSousTitreIndex] = useState(-1)
-  const [sousTitresState, setSousTitres] = useState<string[]>([])
 
   // Ajouter un nouvel état pour contrôler l'affichage de l'animation des voyelles
   const [showVowelsAnimation, setShowVowelsAnimation] = useState(false)
@@ -133,7 +130,6 @@ export default function AmeResultat() {
   const mainAudioRef = useRef<HTMLAudioElement | null>(null)
   const sousTitresInfoRef = useRef<SousTitreInfo[]>([])
   const updateIntervalRef = useRef<NodeJS.Timeout | null>(null)
-  const currentAudioRef = useRef<HTMLAudioElement | null>(null)
 
   // Fonction pour déterminer si un prénom est masculin ou féminin
   const determinerGenre = (prenom: string): "masculin" | "feminin" => {
@@ -255,41 +251,45 @@ Alors, êtes-vous curieux de savoir ce que révèle votre nombre de l'âme ?`
 
   // Fonction pour mettre à jour le sous-titre en fonction du temps actuel
   const updateSousTitre = () => {
-    if (!currentAudioRef.current || sousTitresInfoRef.current.length === 0) return
+    if (!mainAudioRef.current || sousTitresInfoRef.current.length === 0) return
 
-    const currentTime = currentAudioRef.current.currentTime
+    const currentTime = mainAudioRef.current.currentTime
 
-    // Trouver le sous-titre correspondant au temps actuel
+    // Ajouter une anticipation beaucoup plus importante pour la vérification
+    const lookAheadTime = currentTime + 0.5 // Anticipation de 500ms
+
+    // Trouver le sous-titre correspondant au temps actuel ou imminent
     for (let i = 0; i < sousTitresInfoRef.current.length; i++) {
       const sousTitreInfo = sousTitresInfoRef.current[i]
-      if (currentTime >= sousTitreInfo.debut && currentTime < sousTitreInfo.fin) {
-        if (i !== currentSousTitreIndex) {
-          setCurrentSousTitreIndex(i)
-          setSousTitres([sousTitreInfo.texte])
+      if (
+        (lookAheadTime >= sousTitreInfo.debut && lookAheadTime < sousTitreInfo.fin) ||
+        (currentTime >= sousTitreInfo.debut && currentTime < sousTitreInfo.fin)
+      ) {
+        setSousTitreActuel(sousTitreInfo.texte)
 
-          // Afficher le tableau quand on commence à parler du nombre de l'âme
-          if (sousTitreInfo.texte.includes("Je vais commencer par examiner votre nombre de l'âme")) {
-            setShowCircle(false)
-            setShowTable(true)
-            // Forcer le rendu du tableau avec une nouvelle clé et état forceRender
-            setTableKey((prev) => prev + 1)
-            setTableForceRender((prev) => !prev)
-          }
-
-          // Afficher la nouvelle animation des voyelles quand on atteint la phrase spécifique
-          if (sousTitreInfo.texte.includes("Les voyelles, en revanche, sont prononcées avec un souffle fluide")) {
-            setShowTable(false)
-            setShowCircle(false) // Cacher complètement le cercle
-            setShowVowelsAnimation(true)
-          }
-
-          // Afficher le cercle avec l'image du nombre de l'âme après la phrase spécifique
-          if (sousTitreInfo.texte.includes("Vous êtes intuitif, puissant et pragmatique")) {
-            setShowVowelsAnimation(false)
-            setShowCircle(true)
-            setShowNumberInCircle(false) // Afficher l'image, pas le nombre
-          }
+        // Afficher le tableau quand on commence à parler du nombre de l'âme
+        if (sousTitreInfo.texte.includes("Je vais commencer par examiner votre nombre de l'âme")) {
+          setShowCircle(false)
+          setShowTable(true)
+          // Forcer le rendu du tableau avec une nouvelle clé et état forceRender
+          setTableKey((prev) => prev + 1)
+          setTableForceRender((prev) => !prev)
         }
+
+        // Afficher la nouvelle animation des voyelles quand on atteint la phrase spécifique
+        if (sousTitreInfo.texte.includes("Les voyelles, en revanche, sont prononcées avec un souffle fluide")) {
+          setShowTable(false)
+          setShowCircle(false) // Cacher complètement le cercle
+          setShowVowelsAnimation(true)
+        }
+
+        // Afficher le cercle avec l'image du nombre de l'âme après la phrase spécifique
+        if (sousTitreInfo.texte.includes("Vous êtes intuitif, puissant et pragmatique")) {
+          setShowVowelsAnimation(false)
+          setShowCircle(true)
+          setShowNumberInCircle(false) // Afficher l'image, pas le nombre
+        }
+
         return
       }
     }
@@ -309,32 +309,42 @@ Alors, êtes-vous curieux de savoir ce que révèle votre nombre de l'âme ?`
 
       // Stocker l'élément audio dans la référence
       mainAudioRef.current = audio
-      currentAudioRef.current = audio
 
       // Commencer à jouer dès que possible, sans attendre le chargement complet
-      const playPromise = audio.play().catch((e) => {
+      audio.play().catch((e) => {
         console.error("Erreur lors de la lecture initiale:", e)
         // Réessayer après un court délai
         setTimeout(() => {
-          audio.play().catch((err) => console.error("Erreur lors de la seconde tentative:", err))
+          if (audio) {
+            audio.play().catch((err) => console.error("Erreur lors de la seconde tentative:", err))
+          }
         }, 300)
       })
 
       // Attendre que les métadonnées soient chargées en parallèle
       await new Promise<void>((resolve) => {
-        audio.addEventListener("loadedmetadata", () => {
+        const handleMetadataLoaded = () => {
           console.log("Audio principal chargé, durée:", audio.duration)
           setAudioLoaded(true)
           resolve()
-        })
+          audio.removeEventListener("loadedmetadata", handleMetadataLoaded)
+        }
 
-        audio.addEventListener("error", (e) => {
+        const handleError = (e: Event) => {
           console.error("Erreur lors du chargement de l'audio principal:", e)
           resolve() // Résoudre quand même pour continuer
-        })
+          audio.removeEventListener("error", handleError)
+        }
+
+        audio.addEventListener("loadedmetadata", handleMetadataLoaded)
+        audio.addEventListener("error", handleError)
 
         // Définir un timeout pour résoudre même si les métadonnées ne se chargent pas
-        setTimeout(resolve, 3000)
+        setTimeout(() => {
+          audio.removeEventListener("loadedmetadata", handleMetadataLoaded)
+          audio.removeEventListener("error", handleError)
+          resolve()
+        }, 5000)
       })
 
       // Préparer les informations de synchronisation des sous-titres
@@ -343,8 +353,11 @@ Alors, êtes-vous curieux de savoir ce que révèle votre nombre de l'âme ?`
         console.log("Informations de sous-titres préparées:", sousTitresInfoRef.current)
       }
 
-      // Configurer l'intervalle pour mettre à jour les sous-titres avec une fréquence très élevée
-      updateIntervalRef.current = setInterval(updateSousTitre, 1) // Vérification toutes les millisecondes
+      // Configurer l'intervalle pour mettre à jour les sous-titres
+      if (updateIntervalRef.current) {
+        clearInterval(updateIntervalRef.current)
+      }
+      updateIntervalRef.current = setInterval(updateSousTitre, 100) // Vérification toutes les 100ms
 
       // Configurer l'événement de fin
       audio.onended = () => {
@@ -353,6 +366,9 @@ Alors, êtes-vous curieux de savoir ce que révèle votre nombre de l'âme ?`
           clearInterval(updateIntervalRef.current)
         }
       }
+
+      // Ajouter un écouteur pour les mises à jour de temps
+      audio.addEventListener("timeupdate", updateSousTitre)
     } catch (error) {
       console.error("Erreur lors du chargement ou de la lecture de l'audio principal:", error)
     }
@@ -414,8 +430,14 @@ Alors, êtes-vous curieux de savoir ce que révèle votre nombre de l'âme ?`
     if (backgroundAudio) {
       if (isMuted) {
         backgroundAudio.volume = 0.4
+        if (mainAudioRef.current) {
+          mainAudioRef.current.volume = 0.8
+        }
       } else {
         backgroundAudio.volume = 0
+        if (mainAudioRef.current) {
+          mainAudioRef.current.volume = 0
+        }
       }
       setIsMuted(!isMuted)
     }
@@ -540,9 +562,6 @@ Alors, êtes-vous curieux de savoir ce que révèle votre nombre de l'âme ?`
               onComplete={() => {
                 console.log("Animation du tableau terminée, attente de la phrase clé")
                 // Ne rien faire ici, attendre la phrase clé pour passer à l'animation des voyelles
-                setShowTable(false)
-                setShowVowelsAnimation(true)
-                setShowCircle(false)
               }}
               delay={500}
             />
@@ -564,9 +583,6 @@ Alors, êtes-vous curieux de savoir ce que révèle votre nombre de l'âme ?`
               onComplete={() => {
                 console.log("Animation du tableau terminée, attente de la phrase clé")
                 // Ne rien faire ici, attendre la phrase clé pour passer à l'animation des voyelles
-                setShowTable(false)
-                setShowVowelsAnimation(true)
-                setShowCircle(false)
               }}
               delay={500}
             />
