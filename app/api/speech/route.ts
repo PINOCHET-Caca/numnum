@@ -10,11 +10,15 @@ export async function GET(request: NextRequest) {
     const timestamp = searchParams.get("t") // Pour éviter la mise en cache
     const priority = searchParams.get("priority") // Pour les requêtes prioritaires
     const immediate = searchParams.get("immediate") // Pour les requêtes immédiates
+    const speed = searchParams.get("speed") // Pour ajuster la vitesse
 
-    // Priorité élevée pour les requêtes marquées comme immédiates
-    const isPriority = priority === "high" || immediate === "true"
+    // Priorité élevée pour les requêtes marquées comme immédiates ou prioritaires
+    const isPriority = priority === "high" || priority === "highest" || immediate === "true"
+    const isHighestPriority = priority === "highest"
 
-    console.log(`Priorité: ${isPriority ? "élevée" : "normale"}, timestamp: ${timestamp}`)
+    console.log(
+      `Priorité: ${isPriority ? (isHighestPriority ? "maximale" : "élevée") : "normale"}, timestamp: ${timestamp}`,
+    )
 
     if (!text) {
       console.error("Paramètre text manquant")
@@ -38,8 +42,15 @@ export async function GET(request: NextRequest) {
     // Remplacer "lanumerologie.co" par "la numérologie point co" pour la prononciation
     textToSpeech = textToSpeech.replace(/lanumerologie\.co/g, "la numérologie point co")
 
-    // Construire le SSML avec une vitesse légèrement plus rapide pour les requêtes immédiates
-    const rate = isPriority ? "+5%" : "0%"
+    // Déterminer la vitesse de parole en fonction des paramètres
+    let rate = "0%"
+    if (speed === "fast") {
+      rate = "+10%" // Plus rapide pour les requêtes immédiates
+    } else if (isPriority) {
+      rate = "+8%" // Légèrement plus rapide pour les requêtes prioritaires
+    }
+
+    // Construire le SSML avec une vitesse ajustée et une priorité élevée
     const ssml = `
       <speak version='1.0' xml:lang='fr-FR'>
         <voice xml:lang='fr-FR' xml:gender='Female' name='fr-FR-VivienneNeural'>
@@ -55,7 +66,7 @@ export async function GET(request: NextRequest) {
 
       // Utiliser AbortController pour définir un timeout plus court pour les requêtes prioritaires
       const controller = new AbortController()
-      const timeoutId = setTimeout(() => controller.abort(), isPriority ? 120000 : 240000)
+      const timeoutId = setTimeout(() => controller.abort(), isHighestPriority ? 60000 : isPriority ? 90000 : 120000)
 
       // Appeler l'API Azure Speech avec une priorité plus élevée pour les requêtes immédiates
       const response = await fetch(`https://${speechRegion}.tts.speech.microsoft.com/cognitiveservices/v1`, {
@@ -65,12 +76,12 @@ export async function GET(request: NextRequest) {
           "Content-Type": "application/ssml+xml",
           "X-Microsoft-OutputFormat": "audio-16khz-128kbitrate-mono-mp3",
           "User-Agent": "Numerologist",
-          "X-Priority": isPriority ? "high" : "normal",
+          "X-Priority": isHighestPriority ? "highest" : isPriority ? "high" : "normal",
         },
         body: ssml,
         signal: controller.signal,
         // Priorité élevée pour les requêtes immédiates
-        priority: isPriority ? "high" : "auto",
+        priority: isHighestPriority ? "high" : isPriority ? "high" : "auto",
       })
 
       // Nettoyer le timeout
@@ -99,7 +110,7 @@ export async function GET(request: NextRequest) {
       const audioData = await response.arrayBuffer()
       console.log(`Audio généré avec succès, taille: ${audioData.byteLength} octets`)
 
-      // Retourner l'audio avec des en-têtes optimisés pour le streaming
+      // Retourner l'audio avec des en-têtes optimisés pour le streaming et le chargement rapide
       return new NextResponse(audioData, {
         headers: {
           "Content-Type": "audio/mpeg",
@@ -114,6 +125,7 @@ export async function GET(request: NextRequest) {
           "X-Request-ID": `${Date.now()}-${Math.random().toString(36).substring(2, 15)}`, // ID unique pour éviter la mise en cache
           "Transfer-Encoding": "chunked", // Permettre le streaming
           "X-Content-Type-Options": "nosniff",
+          "X-Accel-Buffering": "no", // Désactiver la mise en mémoire tampon pour Nginx
         },
       })
     } catch (error) {

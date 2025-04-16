@@ -310,7 +310,7 @@ Lorsque vous suivez cette voie, vous découvrez une paix intérieure et une clar
       // Créer un nouvel élément audio
       const audio = new Audio()
 
-      // Définir la priorité de chargement élevée
+      // Définir la priorité de chargement maximale
       audio.preload = "auto"
 
       // Réduire le délai de mise en mémoire tampon pour commencer plus rapidement
@@ -319,24 +319,31 @@ Lorsque vous suivez cette voie, vous découvrez une paix intérieure et une clar
       // Stocker l'élément audio dans la référence avant même de définir la source
       mainAudioRef.current = audio
 
-      // Définir la source avec le texte complet et un paramètre de priorité élevée
-      audio.src = `/api/speech?text=${encodeURIComponent(texteNarrationComplet)}&t=${Date.now()}&priority=high&immediate=true`
+      // Définir la source avec le texte complet et des paramètres pour chargement immédiat
+      audio.src = `/api/speech?text=${encodeURIComponent(texteNarrationComplet)}&t=${Date.now()}&priority=highest&immediate=true&speed=fast`
 
-      // Commencer à jouer immédiatement sans attendre
+      // Commencer à charger immédiatement
       audio.load()
 
-      // Essayer de jouer dès que possible
+      // Ajouter un gestionnaire d'événements pour démarrer la lecture dès que possible
+      audio.addEventListener("canplaythrough", () => {
+        audio.play().catch((e) => {
+          console.error("Erreur lors de la lecture après canplaythrough:", e)
+        })
+      })
+
+      // Essayer de jouer immédiatement sans attendre canplaythrough
       const playPromise = audio.play()
 
       if (playPromise !== undefined) {
         playPromise.catch((e) => {
           console.error("Erreur lors de la lecture initiale:", e)
-          // Réessayer immédiatement
+          // Réessayer immédiatement avec un délai minimal
           setTimeout(() => {
             if (audio) {
               audio.play().catch((err) => console.error("Erreur lors de la seconde tentative:", err))
             }
-          }, 100) // Réduit à 100ms
+          }, 50) // Réduit à 50ms
         })
       }
 
@@ -357,17 +364,17 @@ Lorsque vous suivez cette voie, vous découvrez une paix intérieure et une clar
         }
       }
 
-      // Préparer les informations de synchronisation des sous-titres en parallèle
-      // sans attendre que les métadonnées soient complètement chargées
-      setTimeout(() => {
-        if (audio && !isNaN(audio.duration) && audio.duration > 0) {
+      // Préparer les informations de synchronisation des sous-titres immédiatement
+      // Estimation de la durée basée sur le nombre de caractères (50ms par caractère)
+      const estimatedDuration = texteNarrationComplet.length * 0.05
+      sousTitresInfoRef.current = prepareSousTitresInfo(estimatedDuration)
+
+      // Mettre à jour les informations de synchronisation une fois que la durée réelle est connue
+      audio.addEventListener("loadedmetadata", () => {
+        if (!isNaN(audio.duration) && audio.duration > 0) {
           sousTitresInfoRef.current = prepareSousTitresInfo(audio.duration)
-        } else {
-          // Estimation de la durée basée sur le nombre de caractères (50ms par caractère)
-          const estimatedDuration = texteNarrationComplet.length * 0.05
-          sousTitresInfoRef.current = prepareSousTitresInfo(estimatedDuration)
         }
-      }, 500)
+      })
     } catch (error) {
       console.error("Erreur lors du chargement ou de la lecture de l'audio principal:", error)
     }
@@ -395,7 +402,12 @@ Lorsque vous suivez cette voie, vous découvrez une paix intérieure et une clar
     // Démarrer l'audio principal immédiatement sans attendre le chargement complet
     setIsLoading(false)
     setAudioStarted(true)
-    loadAndPlayMainAudio()
+
+    // Ajouter un petit délai pour s'assurer que le composant est complètement monté
+    // avant de démarrer l'audio (évite certains problèmes de lecture)
+    setTimeout(() => {
+      loadAndPlayMainAudio()
+    }, 100)
 
     // Nettoyage
     return () => {
