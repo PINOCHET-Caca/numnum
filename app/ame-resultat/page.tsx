@@ -407,9 +407,8 @@ On se retrouve de l'autre côté.`
     const totalChars = texteNarrationComplet.length
     const durationPerChar = dureeAudio / totalChars
 
-    // Phrase clé après laquelle les sous-titres commencent à être en retard
-    const phraseCleSynchronisation = "Vous êtes intuitif, puissant et pragmatique"
-    const positionPhraseCleSynchronisation = texteNarrationComplet.indexOf(phraseCleSynchronisation)
+    // Ajouter un décalage global pour avancer tous les sous-titres (en secondes)
+    const decalageGlobal = -3.0
 
     let charCount = 0
     for (let i = 0; i < sousTitres.length; i++) {
@@ -419,17 +418,10 @@ On se retrouve de l'autre côté.`
         charCount = position
       }
 
-      // Déterminer si ce sous-titre est après la phrase clé
-      const isAfterProblemStart = charCount >= positionPhraseCleSynchronisation
-
-      // Calculer un décalage adapté à la position dans le texte
-      // Décalage plus important pour les sous-titres après la phrase clé
-      const decalage = isAfterProblemStart ? -5.0 : 0
-
-      // Calculer le début et la fin avec le décalage approprié
-      const debut = Math.max(0, charCount * durationPerChar + decalage)
+      // Calculer le début et la fin avec le décalage global
+      const debut = Math.max(0, charCount * durationPerChar + decalageGlobal)
       charCount += sousTitres[i].length
-      const fin = Math.min(dureeAudio, charCount * durationPerChar + decalage)
+      const fin = Math.min(dureeAudio, charCount * durationPerChar + decalageGlobal)
 
       sousTitresInfo.push({
         texte: sousTitres[i],
@@ -448,8 +440,11 @@ On se retrouve de l'autre côté.`
     // Calculer le temps écoulé depuis le début de la lecture
     const elapsedTime = (Date.now() - startTimeRef.current) / 1000
 
-    // Utiliser le temps écoulé pour la synchronisation des sous-titres
-    const currentTime = elapsedTime
+    // Ajouter un décalage supplémentaire pour compenser le retard
+    const adjustedTime = elapsedTime + 1.5
+
+    // Utiliser le temps ajusté pour la synchronisation des sous-titres
+    const currentTime = adjustedTime
     const totalDuration = totalDurationRef.current || 100
 
     // Phrase spécifique à afficher
@@ -581,7 +576,8 @@ On se retrouve de l'autre côté.`
       // Estimation de la durée totale (en secondes)
       // Basée sur une vitesse de parole moyenne de 150 mots par minute
       const wordsCount = texteNarrationComplet.split(/\s+/).length
-      const estimatedDuration = (wordsCount / 150) * 60
+      // Utiliser une vitesse de parole plus lente pour une meilleure estimation
+      const estimatedDuration = (wordsCount / 130) * 60
       totalDurationRef.current = estimatedDuration
       console.log(`Durée estimée: ${estimatedDuration} secondes`)
 
