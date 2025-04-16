@@ -182,7 +182,33 @@ Les bienfaits qu'il a observés étaient indéniables.
 
 Vous êtes intuitif, puissant et pragmatique.
 
-Alors, êtes-vous curieux de savoir ce que révèle votre nombre de l'âme ?`
+Alors, êtes-vous curieux de savoir ce que révèle votre nombre de l'âme ?
+
+Votre nombre de l'âme est 7, le nombre de la sagesse intérieure et de la spiritualité.
+
+Ce nombre indique que vous avez une profonde vie intérieure et une forte intuition que vous utilisez pour naviguer dans le monde.
+
+Vous êtes naturellement analytique et réfléchi, préférant comprendre les mécanismes cachés derrière les apparences.
+
+Votre esprit est vif et perspicace, capable de percer à jour les illusions et de voir la vérité derrière les façades.
+
+Cette capacité vous donne un avantage unique dans la vie, car vous pouvez anticiper les événements et comprendre les motivations des autres avant même qu'ils ne les expriment.
+
+Cependant, cette profondeur peut parfois vous isoler, car peu de personnes partagent votre niveau de perception et d'introspection.
+
+Vous avez besoin de temps seul pour recharger vos batteries et explorer vos pensées.
+
+Ne considérez pas cela comme une faiblesse, mais plutôt comme une force qui vous permet de maintenir votre équilibre intérieur.
+
+Votre âme aspire à la connaissance, à la vérité et à la compréhension profonde de l'univers et de votre place en son sein.
+
+Vous êtes attiré par les mystères de la vie et les questions existentielles.
+
+Cette quête de sens est au cœur de votre être et guide vos choix, même si vous n'en êtes pas toujours conscient.
+
+Pour vous épanouir pleinement, il est essentiel que vous honoriez ce besoin d'exploration spirituelle et intellectuelle.
+
+Lorsque vous suivez cette voie, vous découvrez une paix intérieure et une clarté qui illuminent tous les aspects de votre vie.`
 
   // Diviser le texte en segments courts (2 lignes max)
   const sousTitres = diviserEnSegmentsCourts(texteNarrationComplet)
