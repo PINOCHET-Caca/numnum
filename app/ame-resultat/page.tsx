@@ -236,7 +236,7 @@ Lorsque vous suivez cette voie, vous découvrez une paix intérieure et une clar
 
       // Calculer un décalage adapté à la position dans le texte
       // Décalage plus important pour les sous-titres après la phrase clé
-      const decalage = isAfterProblemStart ? -3.0 : 0
+      const decalage = isAfterProblemStart ? -5.0 : 0
 
       // Calculer le début et la fin avec le décalage approprié
       const debut = Math.max(0, charCount * durationPerChar + decalage)
@@ -260,7 +260,7 @@ Lorsque vous suivez cette voie, vous découvrez une paix intérieure et une clar
     const currentTime = mainAudioRef.current.currentTime
 
     // Ajouter une anticipation plus importante pour la vérification
-    const lookAheadTime = currentTime + 0.8 // Anticipation de 800ms
+    const lookAheadTime = currentTime + 1.2 // Anticipation de 1.2 secondes (augmentée)
 
     // Trouver le sous-titre correspondant au temps actuel ou imminent
     for (let i = 0; i < sousTitresInfoRef.current.length; i++) {
@@ -372,7 +372,7 @@ Lorsque vous suivez cette voie, vous découvrez une paix intérieure et une clar
       if (updateIntervalRef.current) {
         clearInterval(updateIntervalRef.current)
       }
-      updateIntervalRef.current = setInterval(updateSousTitre, 100)
+      updateIntervalRef.current = setInterval(updateSousTitre, 50) // Mise à jour plus fréquente (50ms au lieu de 100ms)
 
       // Ajouter un écouteur pour les mises à jour de temps
       audio.addEventListener("timeupdate", updateSousTitre)
