@@ -584,11 +584,14 @@ On se retrouve de l'autre côté.`
             resolve(audio)
           })
 
+          // Timeout plus court pour le premier segment pour un démarrage rapide
+          const timeout = index === 0 ? 1000 : 3000
+
           // Timeout de sécurité pour éviter de bloquer indéfiniment
           setTimeout(() => {
             console.log(`Timeout pour le segment ${index}, continuons quand même`)
             resolve(audio)
-          }, 3000)
+          }, timeout)
         })
       })
 
@@ -596,20 +599,13 @@ On se retrouve de l'autre côté.`
 
       const playSegmentsSequentially = async () => {
         try {
-          // Calculer la durée totale estimée pour tous les segments
-          let totalDuration = 0
-          // Précharger tous les segments et calculer la durée totale
-          const preloadedAudios = await Promise.all(audioPromises)
-          for (const audio of preloadedAudios) {
-            if (!isNaN(audio.duration)) {
-              totalDuration += audio.duration
-            }
-          }
+          console.log("Démarrage de la lecture audio immédiate")
 
-          console.log(`Durée totale estimée: ${totalDuration} secondes`)
+          // Commencer à jouer le premier segment immédiatement sans attendre les autres
+          const firstAudioPromise = audioPromises[0]
 
-          // Préparer les informations de synchronisation des sous-titres avec la durée totale
-          sousTitresInfoRef.current = prepareSousTitresInfo(totalDuration)
+          // Précharger les autres segments en arrière-plan
+          const otherAudiosPromise = Promise.all(audioPromises.slice(1))
 
           // Configurer l'intervalle pour mettre à jour les sous-titres - plus fréquent pour une meilleure précision
           if (updateIntervalRef.current) {
@@ -617,15 +613,21 @@ On se retrouve de l'autre côté.`
           }
           updateIntervalRef.current = setInterval(updateSousTitre, 30)
 
+          // Obtenir le premier segment et commencer à le jouer immédiatement
+          const firstAudio = await firstAudioPromise
+          console.log("Premier segment prêt, démarrage immédiat de la lecture")
+
+          // Stocker l'audio actuel
+          mainAudioRef.current = firstAudio
+
+          // Préparer les informations de synchronisation temporaires avec une estimation de durée
+          // Nous les mettrons à jour une fois que tous les segments seront chargés
+          const estimatedDuration = firstAudio.duration * segments.length
+          sousTitresInfoRef.current = prepareSousTitresInfo(estimatedDuration)
+
           // Variables pour suivre la progression globale
           let currentTime = 0
           const segmentStartTimes = [0]
-
-          // Calculer les temps de début de chaque segment
-          for (let i = 1; i < preloadedAudios.length; i++) {
-            currentTime += preloadedAudios[i - 1].duration || 0
-            segmentStartTimes.push(currentTime)
-          }
 
           // Fonction récursive pour jouer les segments en séquence
           const playNextSegment = async (index) => {
@@ -639,7 +641,27 @@ On se retrouve de l'autre côté.`
 
             try {
               console.log(`Lecture du segment ${index}/${segments.length}`)
-              const audio = preloadedAudios[index]
+
+              // Obtenir l'audio pour ce segment
+              let audio
+              if (index === 0) {
+                audio = firstAudio
+              } else {
+                // Attendre que les segments soient préchargés si nécessaire
+                const preloadedAudios = await otherAudiosPromise
+                audio = preloadedAudios[index - 1]
+              }
+
+              // Mettre à jour les temps de début si ce n'est pas le premier segment
+              if (index > 0 && index === 1) {
+                // Une fois que nous avons au moins deux segments, mettre à jour les temps de début
+                currentTime += firstAudio.duration || 0
+                segmentStartTimes.push(currentTime)
+              } else if (index > 1) {
+                const preloadedAudios = await otherAudiosPromise
+                currentTime += preloadedAudios[index - 2].duration || 0
+                segmentStartTimes.push(currentTime)
+              }
 
               // Stocker l'audio actuel
               mainAudioRef.current = audio
@@ -656,91 +678,14 @@ On se retrouve de l'autre côté.`
                 updateSousTitre()
               }
 
-              // Remplacer la fonction updateSousTitre pour utiliser le temps global
-              const originalUpdateSousTitre = updateSousTitre
-              const updateSousTitreOverride = () => {
-                if (!mainAudioRef.current) return
-
-                // Utiliser le temps global si disponible
-                const currentTime =
-                  mainAudioRef.current.globalTime !== undefined
-                    ? mainAudioRef.current.globalTime
-                    : mainAudioRef.current.currentTime
-
-                const totalDuration = totalDuration || 100
-
-                // Le reste de la fonction reste identique...
-                // Phrase spécifique à afficher
-                const phraseSpecifique = "Vous êtes intuitif, puissant et pragmatique."
-
-                // Forcer l'affichage de la phrase spécifique entre 65% et 75% de la durée totale
-                const startTimeForPhrase = totalDuration * 0.65
-                const endTimeForPhrase = totalDuration * 0.75
-
-                if (currentTime >= startTimeForPhrase && currentTime <= endTimeForPhrase) {
-                  setSousTitreActuel(phraseSpecifique)
-                  setShowVowelsAnimation(false)
-                  setShowCircle(true)
-                  setShowTable(false) // S'assurer que le tableau est caché
-                  setShowNumberInCircle(false)
-                  return
-                }
-
-                // Pour les autres moments, trouver le sous-titre correspondant
-                if (sousTitresInfoRef.current.length === 0) return
-
-                for (let i = 0; i < sousTitresInfoRef.current.length; i++) {
-                  const sousTitreInfo = sousTitresInfoRef.current[i]
-                  if (currentTime >= sousTitreInfo.debut && currentTime < sousTitreInfo.fin) {
-                    // Ne pas écraser la phrase spécifique si on est dans sa plage de temps
-                    if (currentTime < startTimeForPhrase || currentTime > endTimeForPhrase) {
-                      setSousTitreActuel(sousTitreInfo.texte)
-                    }
-
-                    // Logique pour les transitions visuelles
-                    if (sousTitreInfo.texte.includes("Je vais commencer par examiner votre nombre de l'âme")) {
-                      setShowCircle(false) // Cacher le cercle
-                      setShowTable(true) // Afficher le tableau
-                      setTableKey((prev) => prev + 1)
-                      setTableForceRender((prev) => !prev)
-                    } else if (
-                      sousTitreInfo.texte.includes("Les voyelles, en revanche, sont prononcées avec un souffle fluide")
-                    ) {
-                      setShowTable(false) // Cacher le tableau
-                      setShowCircle(false) // Cacher le cercle
-                      setShowVowelsAnimation(true) // Afficher l'animation des voyelles
-                    } else if (sousTitreInfo.texte.includes("Vous êtes intuitif, puissant et pragmatique")) {
-                      setShowVowelsAnimation(false) // Cacher l'animation des voyelles
-                      setShowCircle(true) // Afficher le cercle
-                      setShowTable(false) // Cacher le tableau
-                      setShowNumberInCircle(false) // Ne pas afficher le nombre dans le cercle
-                    } else if (
-                      sousTitreInfo.texte.includes("Après avoir analysé les voyelles de votre nom et prénom")
-                    ) {
-                      setShowVowelsAnimation(false) // Cacher l'animation des voyelles
-                      setShowCircle(true) // Afficher le cercle
-                      setShowTable(false) // Cacher le tableau
-                      setShowNumberInCircle(true) // Afficher le nombre dans le cercle
-                    }
-
-                    return
-                  }
-                }
-              }
-
-              // Assign the override to the original function
-              let updateSousTitre = updateSousTitreOverride
-
               // Ajouter l'écouteur pour les mises à jour de temps
               audio.addEventListener("timeupdate", originalTimeUpdateListener)
 
               // Ajouter l'écouteur pour passer au segment suivant
               audio.onended = () => {
-                console.log(`Segment ${index} terminé, passage au`)
+                console.log(`Segment ${index} terminé, passage au suivant`)
                 // Nettoyer les écouteurs avant de passer au segment suivant
                 audio.removeEventListener("timeupdate", originalTimeUpdateListener)
-                // Restaurer la fonction updateSousTitre originale
-                updateSousTitre = originalUpdateSousTitre
                 // Passer au segment suivant
                 playNextSegment(index + 1)
               }
@@ -750,8 +695,6 @@ On se retrouve de l'autre côté.`
                 console.error(`Erreur lors de la lecture du segment ${index}:`, error)
                 // Nettoyer les écouteurs avant de passer au segment suivant
                 audio.removeEventListener("timeupdate", originalTimeUpdateListener)
-                // Restaurer la fonction updateSousTitre originale
-                updateSousTitre = originalUpdateSousTitre
                 // En cas d'erreur, passer au segment suivant
                 playNextSegment(index + 1)
               })
@@ -762,8 +705,24 @@ On se retrouve de l'autre côté.`
             }
           }
 
-          // Démarrer la séquence de lecture
+          // Démarrer la séquence de lecture avec le premier segment
           playNextSegment(0)
+
+          // Mettre à jour les informations de synchronisation une fois que tous les segments sont chargés
+          otherAudiosPromise.then((preloadedAudios) => {
+            // Calculer la durée totale réelle
+            let totalDuration = firstAudio.duration || 0
+            for (const audio of preloadedAudios) {
+              if (!isNaN(audio.duration)) {
+                totalDuration += audio.duration
+              }
+            }
+
+            console.log(`Durée totale réelle: ${totalDuration} secondes`)
+
+            // Mettre à jour les informations de synchronisation avec la durée totale réelle
+            sousTitresInfoRef.current = prepareSousTitresInfo(totalDuration)
+          })
         } catch (error) {
           console.error("Erreur lors de la lecture audio:", error)
         }
