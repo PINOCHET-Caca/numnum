@@ -542,10 +542,21 @@ On se retrouve de l'autre côté.`
       return
     }
 
-    // Avancer automatiquement au sous-titre suivant après un délai
+    // Vérifier si l'audio est en cours de lecture
+    const audioEnLecture = mainAudioRef.current && !mainAudioRef.current.paused
+
+    // Calculer le temps écoulé depuis le début de l'audio ou depuis le dernier changement
     const maintenant = Date.now()
-    if (maintenant - lastSousTitreUpdateRef.current > 4000) {
-      // Réduit à 4 secondes pour avancer plus rapidement
+    const tempsEcoule = audioEnLecture
+      ? (maintenant - audioStartTimeRef.current) / 1000 // Temps en secondes si l'audio est en lecture
+      : (maintenant - lastSousTitreUpdateRef.current) / 1000 // Temps en secondes depuis le dernier changement
+
+    // Avancer automatiquement au sous-titre suivant
+    // Si l'audio est en lecture, utiliser un délai plus court pour suivre la voix
+    // Sinon, utiliser un délai plus long pour une lecture confortable
+    const delaiAvancement = audioEnLecture ? 3.5 : 5.5 // Secondes
+
+    if (tempsEcoule > delaiAvancement) {
       const prochainIndex = currentSousTitreIndex + 1
       if (prochainIndex < sousTitresRef.current.length) {
         console.log(`Avancement au sous-titre ${prochainIndex}`)
@@ -640,8 +651,8 @@ On se retrouve de l'autre côté.`
       if (updateIntervalRef.current) {
         clearInterval(updateIntervalRef.current)
       }
-      // Mettre à jour les sous-titres toutes les 500ms pour garantir qu'ils avancent
-      updateIntervalRef.current = setInterval(updateSousTitre, 500)
+      // Mettre à jour les sous-titres plus fréquemment pour une meilleure synchronisation
+      updateIntervalRef.current = setInterval(updateSousTitre, 250)
 
       // Prendre juste le début du texte pour commencer immédiatement - texte plus court pour un chargement ultra rapide
       const premierSegment = texteNarrationComplet.substring(0, 150) // Réduire encore plus pour un chargement plus rapide
@@ -904,26 +915,7 @@ On se retrouve de l'autre côté.`
             {isMuted ? <VolumeX className="h-4 w-4 mr-2" /> : <Volume2 className="h-4 w-4 mr-2" />}
             {isMuted ? "Activer le son" : "Couper le son"}
           </Button>
-
-          {/* Nouveau bouton pour avancer manuellement les sous-titres */}
-          <Button
-            variant="outline"
-            size="sm"
-            className="border-teal-500 text-teal-300 ml-2"
-            onClick={() => {
-              const prochainIndex = currentSousTitreIndex + 1
-              if (prochainIndex < sousTitresRef.current.length) {
-                setSousTitreActuel(sousTitresRef.current[prochainIndex])
-                setCurrentSousTitreIndex(prochainIndex)
-                lastSousTitreUpdateRef.current = Date.now()
-              }
-            }}
-            type="button"
-          >
-            Sous-titre suivant
-          </Button>
         </div>
-        {/* Ajouter un bouton pour avancer manuellement les sous-titres */}
 
         {/* Tableau numérologique - UNIQUEMENT affiché quand showTable est true */}
         {showTable && fullName && (
