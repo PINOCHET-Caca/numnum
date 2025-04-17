@@ -407,8 +407,8 @@ On se retrouve de l'autre côté.`
     const totalChars = texteNarrationComplet.length
     const durationPerChar = dureeAudio / totalChars
 
-    // Ajouter un décalage global pour avancer tous les sous-titres (en secondes)
-    const decalageGlobal = -3.0
+    // Décalage très léger pour ajuster la synchronisation (en secondes)
+    const decalageGlobal = -0.5
 
     let charCount = 0
     for (let i = 0; i < sousTitres.length; i++) {
@@ -440,8 +440,8 @@ On se retrouve de l'autre côté.`
     // Calculer le temps écoulé depuis le début de la lecture
     const elapsedTime = (Date.now() - startTimeRef.current) / 1000
 
-    // Ajouter un décalage supplémentaire pour compenser le retard
-    const adjustedTime = elapsedTime + 1.5
+    // Ajustement très léger pour la synchronisation
+    const adjustedTime = elapsedTime + 0.2
 
     // Utiliser le temps ajusté pour la synchronisation des sous-titres
     const currentTime = adjustedTime
@@ -577,7 +577,7 @@ On se retrouve de l'autre côté.`
       // Basée sur une vitesse de parole moyenne de 150 mots par minute
       const wordsCount = texteNarrationComplet.split(/\s+/).length
       // Utiliser une vitesse de parole plus lente pour une meilleure estimation
-      const estimatedDuration = (wordsCount / 130) * 60
+      const estimatedDuration = (wordsCount / 140) * 60
       totalDurationRef.current = estimatedDuration
       console.log(`Durée estimée: ${estimatedDuration} secondes`)
 
