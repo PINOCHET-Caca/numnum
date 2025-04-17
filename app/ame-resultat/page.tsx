@@ -488,8 +488,15 @@ On se retrouve de l'autre côté.`
 
   // Fonction pour mettre à jour le sous-titre en fonction du temps écoulé
   const updateSousTitre = () => {
-    if (!audioStarted) return
+    // Même si l'audio n'a pas commencé, afficher le premier sous-titre immédiatement
+    if (!audioStarted) {
+      if (sousTitres.length > 0 && !sousTitreActuel) {
+        setSousTitreActuel(sousTitres[0])
+      }
+      return
+    }
 
+    // Le reste de la fonction reste inchangé
     // Calculer le temps écoulé depuis le début de l'audio
     const tempsEcoule = (Date.now() - audioStartTimeRef.current) / 1000
 
@@ -586,7 +593,10 @@ On se retrouve de l'autre côté.`
   // Effet pour précharger et démarrer l'audio principal immédiatement
   useEffect(() => {
     if (!isLoading && mounted && !audioStarted) {
-      // Ne pas afficher immédiatement le sous-titre, laisser le système de synchronisation s'en charger
+      // Afficher immédiatement le premier sous-titre
+      if (sousTitres.length > 0) {
+        setSousTitreActuel(sousTitres[0])
+      }
 
       setAudioStarted(true)
       console.log("Démarrage immédiat de l'audio...")
