@@ -533,78 +533,41 @@ On se retrouve de l'autre côté.`
 
   // Fonction pour mettre à jour le sous-titre en fonction du temps écoulé
   const updateSousTitre = () => {
-    // Même si l'audio n'a pas commencé, afficher le premier sous-titre immédiatement
-    if (!audioStarted) {
-      if (sousTitresRef.current.length > 0 && !sousTitreActuel) {
-        setSousTitreActuel(sousTitresRef.current[0])
-        setCurrentSousTitreIndex(0)
-        lastSousTitreUpdateRef.current = Date.now()
-      }
+    // Afficher immédiatement le premier sous-titre, même si l'audio n'a pas commencé
+    if (!sousTitreActuel && sousTitresRef.current.length > 0) {
+      console.log("Affichage du premier sous-titre")
+      setSousTitreActuel(sousTitresRef.current[0])
+      setCurrentSousTitreIndex(0)
+      lastSousTitreUpdateRef.current = Date.now()
       return
     }
 
-    // Vérifier si l'audio est en cours de lecture
-    if (mainAudioRef.current && mainAudioRef.current.paused) {
-      // Si l'audio est en pause, avancer automatiquement les sous-titres
-      avancerSousTitresAutomatiquement()
-      return
-    }
+    // Avancer automatiquement au sous-titre suivant après un délai
+    const maintenant = Date.now()
+    if (maintenant - lastSousTitreUpdateRef.current > 4000) {
+      // Réduit à 4 secondes pour avancer plus rapidement
+      const prochainIndex = currentSousTitreIndex + 1
+      if (prochainIndex < sousTitresRef.current.length) {
+        console.log(`Avancement au sous-titre ${prochainIndex}`)
+        setSousTitreActuel(sousTitresRef.current[prochainIndex])
+        setCurrentSousTitreIndex(prochainIndex)
+        lastSousTitreUpdateRef.current = maintenant
 
-    // Le reste de la fonction reste inchangé
-    // Calculer le temps écoulé depuis le début de l'audio
-    const tempsEcoule = (Date.now() - audioStartTimeRef.current) / 1000
-
-    // Vérifier les points d'ancrage
-    for (let i = 0; i < pointsAncrageRef.current.length; i++) {
-      const point = pointsAncrageRef.current[i]
-
-      // Si ce point d'ancrage correspond au temps actuel et n'a pas encore été affiché
-      if (!point.affichage && tempsEcoule >= point.tempsAudio) {
-        // Marquer ce point comme affiché
-        pointsAncrageRef.current[i].affichage = true
-
-        // Mettre à jour le sous-titre
-        setSousTitreActuel(point.texte)
-
-        // Trouver l'index de ce sous-titre dans la liste complète
-        const index = sousTitresRef.current.findIndex((st) => st === point.texte)
-        if (index !== -1) {
-          setCurrentSousTitreIndex(index)
-        }
-
-        lastSousTitreUpdateRef.current = Date.now()
-
-        // Exécuter les actions associées à ce point d'ancrage
-        if (point.actions) {
-          if (point.actions.showCircle !== undefined) setShowCircle(point.actions.showCircle)
-          if (point.actions.showTable !== undefined) setShowTable(point.actions.showTable)
-          if (point.actions.showVowelsAnimation !== undefined) setShowVowelsAnimation(point.actions.showVowelsAnimation)
-          if (point.actions.showNumberInCircle !== undefined) setShowNumberInCircle(point.actions.showNumberInCircle)
-          if (point.actions.forceTableRender) {
+        // Vérifier si ce sous-titre correspond à un point d'ancrage
+        const pointAncrage = pointsAncrageRef.current.find((p) => p.texte === sousTitresRef.current[prochainIndex])
+        if (pointAncrage && pointAncrage.actions) {
+          if (pointAncrage.actions.showCircle !== undefined) setShowCircle(pointAncrage.actions.showCircle)
+          if (pointAncrage.actions.showTable !== undefined) setShowTable(pointAncrage.actions.showTable)
+          if (pointAncrage.actions.showVowelsAnimation !== undefined)
+            setShowVowelsAnimation(pointAncrage.actions.showVowelsAnimation)
+          if (pointAncrage.actions.showNumberInCircle !== undefined)
+            setShowNumberInCircle(pointAncrage.actions.showNumberInCircle)
+          if (pointAncrage.actions.forceTableRender) {
             setTableKey((prev) => prev + 1)
             setTableForceRender((prev) => !prev)
           }
         }
-
-        // Sortir de la boucle après avoir trouvé un point d'ancrage correspondant
-        return
       }
-    }
-
-    // Si aucun point d'ancrage ne correspond, chercher le sous-titre le plus proche
-    // en fonction du temps écoulé (estimation basée sur la position dans le texte)
-    const totalDuree = 600 // Durée totale estimée en secondes
-    const positionRelative = tempsEcoule / totalDuree
-    const indexEstime = Math.floor(positionRelative * sousTitresRef.current.length)
-
-    // S'assurer que l'index est dans les limites et qu'il est différent de l'index actuel
-    if (indexEstime >= 0 && indexEstime < sousTitresRef.current.length && indexEstime !== currentSousTitreIndex) {
-      setSousTitreActuel(sousTitresRef.current[indexEstime])
-      setCurrentSousTitreIndex(indexEstime)
-      lastSousTitreUpdateRef.current = Date.now()
-    } else {
-      // Si aucun nouveau sous-titre n'a été trouvé, vérifier si on doit avancer automatiquement
-      avancerSousTitresAutomatiquement()
     }
   }
 
@@ -668,17 +631,17 @@ On se retrouve de l'autre côté.`
       }
 
       setAudioStarted(true)
-      console.log("Démarrage immédiat de l'audio...")
+      console.log("Démarrage de l'audio et des sous-titres...")
 
       // Enregistrer le temps de début pour la synchronisation
       audioStartTimeRef.current = Date.now()
 
-      // Configurer l'intervalle pour mettre à jour les sous-titres
+      // Configurer l'intervalle pour mettre à jour les sous-titres - PLUS FRÉQUENT
       if (updateIntervalRef.current) {
         clearInterval(updateIntervalRef.current)
       }
-      // Mettre à jour les sous-titres plus fréquemment pour une meilleure synchronisation
-      updateIntervalRef.current = setInterval(updateSousTitre, 1000)
+      // Mettre à jour les sous-titres toutes les 500ms pour garantir qu'ils avancent
+      updateIntervalRef.current = setInterval(updateSousTitre, 500)
 
       // Prendre juste le début du texte pour commencer immédiatement - texte plus court pour un chargement ultra rapide
       const premierSegment = texteNarrationComplet.substring(0, 150) // Réduire encore plus pour un chargement plus rapide
@@ -941,7 +904,26 @@ On se retrouve de l'autre côté.`
             {isMuted ? <VolumeX className="h-4 w-4 mr-2" /> : <Volume2 className="h-4 w-4 mr-2" />}
             {isMuted ? "Activer le son" : "Couper le son"}
           </Button>
+
+          {/* Nouveau bouton pour avancer manuellement les sous-titres */}
+          <Button
+            variant="outline"
+            size="sm"
+            className="border-teal-500 text-teal-300 ml-2"
+            onClick={() => {
+              const prochainIndex = currentSousTitreIndex + 1
+              if (prochainIndex < sousTitresRef.current.length) {
+                setSousTitreActuel(sousTitresRef.current[prochainIndex])
+                setCurrentSousTitreIndex(prochainIndex)
+                lastSousTitreUpdateRef.current = Date.now()
+              }
+            }}
+            type="button"
+          >
+            Sous-titre suivant
+          </Button>
         </div>
+        {/* Ajouter un bouton pour avancer manuellement les sous-titres */}
 
         {/* Tableau numérologique - UNIQUEMENT affiché quand showTable est true */}
         {showTable && fullName && (
