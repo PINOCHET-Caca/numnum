@@ -403,24 +403,44 @@ On se retrouve de l'autre côté.`
 
   // Fonction pour préparer les informations de synchronisation des sous-titres
   const prepareSousTitresInfo = (segments: string[], dureeAudio: number): SousTitreInfo[] => {
-    const sousTitresInfo: SousTitreInfo[] = []
+    const sousTitresInfos: SousTitreInfo[] = []
 
     // Calculer la durée approximative de chaque sous-titre en fonction de sa longueur
     const totalChars = texteNarrationComplet.length
     const durationPerChar = dureeAudio / totalChars
 
-    // Décalage global beaucoup plus important pour ajuster la synchronisation (en secondes)
-    const decalageGlobal = 6.0
+    // Décalage global modéré pour le début
+    const decalageGlobalInitial = 2.0
 
-    // Tableau des décalages spécifiques pour certaines phrases problématiques
-    const decalagesSpecifiques: Record<string, number> = {
-      "Les informations que je vais partager avec vous sont incroyablement personnelles et pourraient bien vous surprendre.": 8.0,
-      "La plupart des lecteurs sont choqués par la précision de ces révélations": 8.0,
-      "Si vous choisissez d'écouter, faites-le avec un esprit ouvert": 8.0,
-      "Je vais commencer par examiner votre nombre de l'âme": 8.0,
-      "Le nombre de l'âme, aussi appelée désir du cœur": 8.0,
-      // Ajouter d'autres phrases problématiques avec un décalage important
-    }
+    // Tableau des phrases clés et leurs positions approximatives dans le texte (en pourcentage)
+    const phrasesClés = [
+      {
+        texte: "Les informations que je vais partager avec vous sont incroyablement personnelles",
+        position: 0.03, // ~3% du texte total
+        decalage: 3.0,
+      },
+      {
+        texte: "La plupart des lecteurs sont choqués par la précision de ces révélations",
+        position: 0.04, // ~4% du texte total
+        decalage: 3.5,
+      },
+      {
+        texte: "Si vous choisissez d'écouter, faites-le avec un esprit ouvert",
+        position: 0.05, // ~5% du texte total
+        decalage: 4.0,
+      },
+      {
+        texte: "Je vais commencer par examiner votre nombre de l'âme",
+        position: 0.06, // ~6% du texte total
+        decalage: 4.5,
+      },
+      {
+        texte: "Vous êtes intuitif, puissant et pragmatique",
+        position: 0.25, // ~25% du texte total
+        decalage: 5.0,
+      },
+      // Ajouter d'autres phrases clés au besoin
+    ]
 
     let charCount = 0
     for (let i = 0; i < sousTitres.length; i++) {
@@ -430,19 +450,38 @@ On se retrouve de l'autre côté.`
         charCount = position
       }
 
+      // Calculer la position relative dans le texte (en pourcentage)
+      const positionRelative = charCount / totalChars
+
       // Déterminer le segment audio auquel appartient ce sous-titre
-      // Estimation basée sur la position relative dans le texte
-      const segmentIndex = Math.floor((charCount / totalChars) * 10) // Supposons 10 segments audio
+      const segmentIndex = Math.floor(positionRelative * 10) // Supposons 10 segments audio
 
-      // Appliquer un décalage spécifique si la phrase est dans la liste
-      const decalageSpecifique = decalagesSpecifiques[sousTitres[i]] || 0
+      // Déterminer le décalage à appliquer en fonction de la position dans le texte
+      let decalage = decalageGlobalInitial
 
-      // Calculer le début et la fin avec le décalage global et spécifique
-      const debut = Math.max(0, charCount * durationPerChar + decalageGlobal + decalageSpecifique)
+      // Augmenter progressivement le décalage en fonction de la position dans le texte
+      // Plus on avance dans le texte, plus le décalage augmente
+      if (positionRelative > 0.03) {
+        // Après les 3 premiers pourcents du texte
+        // Augmentation progressive du décalage
+        decalage += Math.min(6.0, positionRelative * 20)
+      }
+
+      // Vérifier si ce sous-titre contient une phrase clé
+      for (const phraseClé of phrasesClés) {
+        if (sousTitres[i].includes(phraseClé.texte)) {
+          // Appliquer un décalage spécifique pour cette phrase clé
+          decalage = Math.max(decalage, phraseClé.decalage)
+          break
+        }
+      }
+
+      // Calculer le début et la fin avec le décalage
+      const debut = Math.max(0, charCount * durationPerChar + decalage)
       charCount += sousTitres[i].length
-      const fin = Math.min(dureeAudio, charCount * durationPerChar + decalageGlobal + decalageSpecifique)
+      const fin = Math.min(dureeAudio, charCount * durationPerChar + decalage)
 
-      sousTitresInfo.push({
+      sousTitresInfos.push({
         texte: sousTitres[i],
         debut,
         fin,
@@ -450,7 +489,7 @@ On se retrouve de l'autre côté.`
       })
     }
 
-    return sousTitresInfo
+    return sousTitresInfos
   }
 
   // Fonction pour mettre à jour le sous-titre en fonction du temps actuel
@@ -466,12 +505,24 @@ On se retrouve de l'autre côté.`
     // Calculer le temps écoulé depuis le début du segment actuel
     const elapsedTime = (Date.now() - segmentStartTime) / 1000
 
-    // Appliquer un décalage progressif beaucoup plus agressif qui augmente rapidement avec le temps
-    // Plus le temps passe, plus on avance les sous-titres
-    const progressiveOffset = Math.min(10.0, 6.0 + (elapsedTime / 15) * 4.0)
+    // Appliquer un décalage progressif qui augmente avec le temps écoulé depuis le début
+    // Plus on avance dans la narration, plus le décalage augmente
+    const baseOffset = 2.0 // Décalage de base
+    const progressiveFactor = Math.min(1.0, elapsedTime / 60) // Facteur qui augmente avec le temps (plafonné à 1.0)
+    const additionalOffset = progressiveFactor * 4.0 // Décalage supplémentaire qui augmente avec le temps (max 4.0)
 
-    // Utiliser le temps ajusté pour la synchronisation des sous-titres
-    const adjustedTime = elapsedTime + progressiveOffset
+    // Décalage total qui augmente progressivement
+    const totalOffset = baseOffset + additionalOffset
+
+    // Décalage spécifique pour les segments problématiques
+    let segmentSpecificOffset = 0
+    if (currentSegmentIndex >= 1) {
+      // À partir du deuxième segment
+      segmentSpecificOffset = 2.0 // Ajouter 2 secondes supplémentaires
+    }
+
+    // Temps ajusté pour la synchronisation des sous-titres
+    const adjustedTime = elapsedTime + totalOffset + segmentSpecificOffset
     const totalDuration = totalDurationRef.current || 100
 
     // Phrase spécifique à afficher
@@ -528,7 +579,6 @@ On se retrouve de l'autre côté.`
           setShowVowelsAnimation(false) // Cacher l'animation des voyelles
           setShowCircle(true) // Afficher le cercle
           setShowTable(false) // Cacher le tableau
-          setShowNumberInCircle(false) // Ne pas afficher le nombre  // Cacher le tableau
           setShowNumberInCircle(false) // Ne pas afficher le nombre dans le cercle
         } else if (sousTitreInfo.texte.includes("Après avoir analysé les voyelles de votre nom et prénom")) {
           setShowVowelsAnimation(false) // Cacher l'animation des voyelles
