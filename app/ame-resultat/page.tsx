@@ -531,7 +531,7 @@ On se retrouve de l'autre côté.`
     }
   }
 
-  // Fonction pour mettre à jour le sous-titre en fonction du temps écoulé
+  // Remplacer la fonction updateSousTitre par cette version simplifiée qui force l'avancement
   const updateSousTitre = () => {
     // Afficher immédiatement le premier sous-titre, même si l'audio n'a pas commencé
     if (!sousTitreActuel && sousTitresRef.current.length > 0) {
@@ -542,24 +542,13 @@ On se retrouve de l'autre côté.`
       return
     }
 
-    // Vérifier si l'audio est en cours de lecture
-    const audioEnLecture = mainAudioRef.current && !mainAudioRef.current.paused
-
-    // Calculer le temps écoulé depuis le début de l'audio ou depuis le dernier changement
+    // FORCER l'avancement des sous-titres toutes les 3 secondes, peu importe l'état de l'audio
     const maintenant = Date.now()
-    const tempsEcoule = audioEnLecture
-      ? (maintenant - audioStartTimeRef.current) / 1000 // Temps en secondes si l'audio est en lecture
-      : (maintenant - lastSousTitreUpdateRef.current) / 1000 // Temps en secondes depuis le dernier changement
-
-    // Avancer automatiquement au sous-titre suivant
-    // Si l'audio est en lecture, utiliser un délai plus court pour suivre la voix
-    // Sinon, utiliser un délai plus long pour une lecture confortable
-    const delaiAvancement = audioEnLecture ? 3.5 : 5.5 // Secondes
-
-    if (tempsEcoule > delaiAvancement) {
+    if (maintenant - lastSousTitreUpdateRef.current > 3000) {
+      // Réduit à 3 secondes pour avancer plus rapidement
       const prochainIndex = currentSousTitreIndex + 1
       if (prochainIndex < sousTitresRef.current.length) {
-        console.log(`Avancement au sous-titre ${prochainIndex}`)
+        console.log(`FORÇAGE avancement au sous-titre ${prochainIndex}`)
         setSousTitreActuel(sousTitresRef.current[prochainIndex])
         setCurrentSousTitreIndex(prochainIndex)
         lastSousTitreUpdateRef.current = maintenant
@@ -647,12 +636,23 @@ On se retrouve de l'autre côté.`
       // Enregistrer le temps de début pour la synchronisation
       audioStartTimeRef.current = Date.now()
 
+      // Remplacer la configuration de l'intervalle pour mettre à jour les sous-titres plus fréquemment
+      // Dans l'effet useEffect qui commence par if (!isLoading && mounted && !audioStarted)
+      // Remplacer ces lignes:
       // Configurer l'intervalle pour mettre à jour les sous-titres - PLUS FRÉQUENT
       if (updateIntervalRef.current) {
         clearInterval(updateIntervalRef.current)
       }
       // Mettre à jour les sous-titres plus fréquemment pour une meilleure synchronisation
       updateIntervalRef.current = setInterval(updateSousTitre, 250)
+
+      // Par celles-ci:
+      // Configurer l'intervalle pour mettre à jour les sous-titres - BEAUCOUP PLUS FRÉQUENT
+      if (updateIntervalRef.current) {
+        clearInterval(updateIntervalRef.current)
+      }
+      // Mettre à jour les sous-titres très fréquemment pour garantir l'avancement
+      updateIntervalRef.current = setInterval(updateSousTitre, 100)
 
       // Prendre juste le début du texte pour commencer immédiatement - texte plus court pour un chargement ultra rapide
       const premierSegment = texteNarrationComplet.substring(0, 150) // Réduire encore plus pour un chargement plus rapide
@@ -792,6 +792,34 @@ On se retrouve de l'autre côté.`
 
       // Démarrer le préchargement après un court délai
       setTimeout(prepareNextSegments, 100)
+
+      // Ajouter un système de secours qui force l'avancement des sous-titres
+      console.log("Configuration du système de secours pour les sous-titres")
+      setTimeout(() => {
+        // Après 5 secondes, vérifier si les sous-titres avancent
+        if (currentSousTitreIndex < 1) {
+          console.log("SYSTÈME DE SECOURS ACTIVÉ: Les sous-titres semblent bloqués")
+          // Forcer l'avancement au sous-titre suivant
+          if (sousTitresRef.current.length > 1) {
+            setSousTitreActuel(sousTitresRef.current[1])
+            setCurrentSousTitreIndex(1)
+            lastSousTitreUpdateRef.current = Date.now()
+          }
+
+          // Mettre en place un intervalle de secours qui avance les sous-titres quoi qu'il arrive
+          const backupInterval = setInterval(() => {
+            const nextIndex = currentSousTitreIndex + 1
+            if (nextIndex < sousTitresRef.current.length) {
+              console.log(`SYSTÈME DE SECOURS: Avancement forcé au sous-titre ${nextIndex}`)
+              setSousTitreActuel(sousTitresRef.current[nextIndex])
+              setCurrentSousTitreIndex(nextIndex)
+              lastSousTitreUpdateRef.current = Date.now()
+            } else {
+              clearInterval(backupInterval)
+            }
+          }, 3000) // Avancer toutes les 3 secondes quoi qu'il arrive
+        }
+      }, 5000)
     }
   }, [isLoading, mounted, audioStarted, texteNarrationComplet])
 
