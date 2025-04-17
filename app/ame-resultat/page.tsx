@@ -83,6 +83,7 @@ interface SousTitreInfo {
   texte: string
   debut: number
   fin: number
+  segmentIndex: number // Ajouter l'index du segment audio
 }
 
 export default function AmeResultat() {
@@ -142,6 +143,7 @@ export default function AmeResultat() {
   const currentSegmentIndexRef = useRef<number>(0)
   const totalDurationRef = useRef<number>(0)
   const startTimeRef = useRef<number>(0)
+  const segmentStartTimesRef = useRef<Record<number, number>>({}) // Stocker les temps de début de chaque segment
 
   // Fonction pour déterminer si un prénom est masculin ou féminin
   const determinerGenre = (prenom: string): "masculin" | "feminin" => {
@@ -400,15 +402,21 @@ On se retrouve de l'autre côté.`
   const sousTitres = diviserEnSegmentsCourts(texteNarrationComplet)
 
   // Fonction pour préparer les informations de synchronisation des sous-titres
-  const prepareSousTitresInfo = (dureeAudio: number): SousTitreInfo[] => {
+  const prepareSousTitresInfo = (segments: string[], dureeAudio: number): SousTitreInfo[] => {
     const sousTitresInfo: SousTitreInfo[] = []
 
     // Calculer la durée approximative de chaque sous-titre en fonction de sa longueur
     const totalChars = texteNarrationComplet.length
     const durationPerChar = dureeAudio / totalChars
 
-    // Décalage très léger pour ajuster la synchronisation (en secondes)
-    const decalageGlobal = 2.0
+    // Décalage global pour ajuster la synchronisation (en secondes)
+    const decalageGlobal = 3.0
+
+    // Tableau des décalages spécifiques pour certaines phrases problématiques
+    const decalagesSpecifiques: Record<string, number> = {
+      "Les informations que je vais partager avec vous sont incroyablement personnelles et pourraient bien vous surprendre.": 5.0,
+      // Ajouter d'autres phrases problématiques si nécessaire
+    }
 
     let charCount = 0
     for (let i = 0; i < sousTitres.length; i++) {
@@ -418,15 +426,23 @@ On se retrouve de l'autre côté.`
         charCount = position
       }
 
-      // Calculer le début et la fin avec le décalage global
-      const debut = Math.max(0, charCount * durationPerChar + decalageGlobal)
+      // Déterminer le segment audio auquel appartient ce sous-titre
+      // Estimation basée sur la position relative dans le texte
+      const segmentIndex = Math.floor((charCount / totalChars) * 10) // Supposons 10 segments audio
+
+      // Appliquer un décalage spécifique si la phrase est dans la liste
+      const decalageSpecifique = decalagesSpecifiques[sousTitres[i]] || 0
+
+      // Calculer le début et la fin avec le décalage global et spécifique
+      const debut = Math.max(0, charCount * durationPerChar + decalageGlobal + decalageSpecifique)
       charCount += sousTitres[i].length
-      const fin = Math.min(dureeAudio, charCount * durationPerChar + decalageGlobal)
+      const fin = Math.min(dureeAudio, charCount * durationPerChar + decalageGlobal + decalageSpecifique)
 
       sousTitresInfo.push({
         texte: sousTitres[i],
         debut,
         fin,
+        segmentIndex,
       })
     }
 
@@ -437,14 +453,21 @@ On se retrouve de l'autre côté.`
   const updateSousTitre = () => {
     if (!mainAudioRef.current) return
 
-    // Calculer le temps écoulé depuis le début de la lecture
-    const elapsedTime = (Date.now() - startTimeRef.current) / 1000
+    // Obtenir l'index du segment audio actuel
+    const currentSegmentIndex = currentSegmentIndexRef.current
 
-    // Ajustement très léger pour la synchronisation
-    const adjustedTime = elapsedTime + 2.0
+    // Obtenir le temps de début du segment actuel
+    const segmentStartTime = segmentStartTimesRef.current[currentSegmentIndex] || startTimeRef.current
+
+    // Calculer le temps écoulé depuis le début du segment actuel
+    const elapsedTime = (Date.now() - segmentStartTime) / 1000
+
+    // Appliquer un décalage progressif qui augmente avec le temps
+    // Plus le temps passe, plus on avance les sous-titres
+    const progressiveOffset = Math.min(5.0, 3.0 + (elapsedTime / 30) * 2.0)
 
     // Utiliser le temps ajusté pour la synchronisation des sous-titres
-    const currentTime = adjustedTime
+    const adjustedTime = elapsedTime + progressiveOffset
     const totalDuration = totalDurationRef.current || 100
 
     // Phrase spécifique à afficher
@@ -454,7 +477,7 @@ On se retrouve de l'autre côté.`
     const startTimeForPhrase = totalDuration * 0.65
     const endTimeForPhrase = totalDuration * 0.75
 
-    if (currentTime >= startTimeForPhrase && currentTime <= endTimeForPhrase) {
+    if (adjustedTime >= startTimeForPhrase && adjustedTime <= endTimeForPhrase) {
       setSousTitreActuel(phraseSpecifique)
       setShowVowelsAnimation(false)
       setShowCircle(true)
@@ -466,11 +489,24 @@ On se retrouve de l'autre côté.`
     // Pour les autres moments, trouver le sous-titre correspondant
     if (sousTitresInfoRef.current.length === 0) return
 
-    for (let i = 0; i < sousTitresInfoRef.current.length; i++) {
-      const sousTitreInfo = sousTitresInfoRef.current[i]
-      if (currentTime >= sousTitreInfo.debut && currentTime < sousTitreInfo.fin) {
+    // Filtrer les sous-titres pour ne considérer que ceux du segment actuel ou précédent
+    const relevantSubtitles = sousTitresInfoRef.current.filter((st) => st.segmentIndex <= currentSegmentIndex)
+
+    for (let i = 0; i < relevantSubtitles.length; i++) {
+      const sousTitreInfo = relevantSubtitles[i]
+
+      // Ajuster le temps de début et de fin en fonction du segment
+      const debutAjuste = sousTitreInfo.debut
+      const finAjuste = sousTitreInfo.fin
+
+      // Si le sous-titre appartient à un segment précédent, le considérer comme déjà passé
+      if (sousTitreInfo.segmentIndex < currentSegmentIndex) {
+        continue
+      }
+
+      if (adjustedTime >= debutAjuste && adjustedTime < finAjuste) {
         // Ne pas écraser la phrase spécifique si on est dans sa plage de temps
-        if (currentTime < startTimeForPhrase || currentTime > endTimeForPhrase) {
+        if (adjustedTime < startTimeForPhrase || adjustedTime > endTimeForPhrase) {
           setSousTitreActuel(sousTitreInfo.texte)
         }
 
@@ -488,6 +524,7 @@ On se retrouve de l'autre côté.`
           setShowVowelsAnimation(false) // Cacher l'animation des voyelles
           setShowCircle(true) // Afficher le cercle
           setShowTable(false) // Cacher le tableau
+          setShowNumberInCircle(false) // Ne pas afficher le nombre  // Cacher le tableau
           setShowNumberInCircle(false) // Ne pas afficher le nombre dans le cercle
         } else if (sousTitreInfo.texte.includes("Après avoir analysé les voyelles de votre nom et prénom")) {
           setShowVowelsAnimation(false) // Cacher l'animation des voyelles
@@ -582,7 +619,7 @@ On se retrouve de l'autre côté.`
       console.log(`Durée estimée: ${estimatedDuration} secondes`)
 
       // Préparer les informations de synchronisation des sous-titres
-      sousTitresInfoRef.current = prepareSousTitresInfo(estimatedDuration)
+      sousTitresInfoRef.current = prepareSousTitresInfo(segments, estimatedDuration)
 
       // Configurer l'intervalle pour mettre à jour les sous-titres
       if (updateIntervalRef.current) {
@@ -604,6 +641,9 @@ On se retrouve de l'autre côté.`
         }
 
         console.log(`Lecture du segment ${index}/${segments.length}`)
+
+        // Enregistrer le temps de début de ce segment
+        segmentStartTimesRef.current[index] = Date.now()
 
         // Créer un nouvel élément audio pour ce segment
         const audio = new Audio()
