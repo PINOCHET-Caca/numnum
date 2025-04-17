@@ -587,7 +587,30 @@ On se retrouve de l'autre côté.`
   useEffect(() => {
     if (!isLoading && mounted && !audioStarted) {
       setAudioStarted(true)
-      console.log("Démarrage de l'audio...")
+      console.log("Préchargement de l'audio...")
+
+      // Diviser le texte en segments plus petits pour éviter les limites de l'API
+      const maxChars = 1000 // Limite de caractères par requête
+      const segments = []
+      let currentSegment = ""
+
+      // Diviser le texte en respectant les phrases
+      const phrases = texteNarrationComplet.split(/(?<=[.!?])\s+/)
+      for (const phrase of phrases) {
+        if ((currentSegment + phrase).length <= maxChars) {
+          currentSegment += (currentSegment ? " " : "") + phrase
+        } else {
+          if (currentSegment) {
+            segments.push(currentSegment)
+          }
+          currentSegment = phrase
+        }
+      }
+      if (currentSegment) {
+        segments.push(currentSegment)
+      }
+
+      console.log(`Texte divisé en ${segments.length} segments pour la synthèse vocale`)
 
       // Enregistrer le temps de début pour la synchronisation
       audioStartTimeRef.current = Date.now()
@@ -619,37 +642,67 @@ On se retrouve de l'autre côté.`
       // Démarrer le mécanisme de secours
       forcerSousTitres()
 
-      // Simuler la lecture audio avec des segments
-      const simulerLectureAudio = () => {
-        // Mettre à jour le sous-titre initial
-        updateSousTitre()
+      // Fonction pour jouer les segments audio en séquence
+      const playNextSegment = (index) => {
+        if (index >= segments.length) {
+          console.log("Tous les segments audio ont été lus")
+          if (updateIntervalRef.current) {
+            clearInterval(updateIntervalRef.current)
+          }
+          return
+        }
 
-        // Simuler le passage au segment suivant après un délai
-        setTimeout(() => {
-          currentSegmentIndexRef.current = 1
-          updateSousTitre()
+        console.log(`Lecture du segment ${index}/${segments.length}`)
 
-          // Continuer avec d'autres segments...
-          setTimeout(() => {
-            currentSegmentIndexRef.current = 2
-            updateSousTitre()
-            // Et ainsi de suite...
-          }, 15000)
-        }, 15000)
+        // Enregistrer le temps de début de ce segment
+        segmentStartTimesRef.current[index] = Date.now()
+
+        // Créer un nouvel élément audio pour ce segment
+        const audio = new Audio()
+        audio.src = `/api/speech?text=${encodeURIComponent(segments[index])}&segment=${index}&t=${Date.now()}`
+
+        // Stocker l'audio dans la référence
+        mainAudioRef.current = audio
+        audioSegmentsRef.current[index] = audio
+        currentSegmentIndexRef.current = index
+
+        // Configurer l'événement de fin pour passer au segment suivant
+        audio.onended = () => {
+          console.log(`Segment ${index} terminé, passage au suivant`)
+          playNextSegment(index + 1)
+        }
+
+        // Gérer les erreurs
+        audio.onerror = () => {
+          console.error(`Erreur lors de la lecture du segment ${index}`)
+          playNextSegment(index + 1)
+        }
+
+        // Démarrer la lecture
+        audio.play().catch((error) => {
+          console.error(`Erreur lors de la lecture du segment ${index}:`, error)
+          playNextSegment(index + 1)
+        })
       }
 
-      // Démarrer la simulation
-      simulerLectureAudio()
+      // Démarrer la lecture du premier segment immédiatement
+      playNextSegment(0)
     }
-  }, [isLoading, mounted, audioStarted])
+  }, [isLoading, mounted, audioStarted, texteNarrationComplet])
 
   // Gestion du son de fond
   const toggleMute = () => {
     if (backgroundAudio) {
       if (isMuted) {
         backgroundAudio.volume = 0.4
+        if (mainAudioRef.current) {
+          mainAudioRef.current.volume = 0.8
+        }
       } else {
         backgroundAudio.volume = 0
+        if (mainAudioRef.current) {
+          mainAudioRef.current.volume = 0
+        }
       }
       setIsMuted(!isMuted)
     }
