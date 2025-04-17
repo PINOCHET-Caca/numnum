@@ -409,13 +409,17 @@ On se retrouve de l'autre côté.`
     const totalChars = texteNarrationComplet.length
     const durationPerChar = dureeAudio / totalChars
 
-    // Décalage global pour ajuster la synchronisation (en secondes)
-    const decalageGlobal = 3.0
+    // Décalage global beaucoup plus important pour ajuster la synchronisation (en secondes)
+    const decalageGlobal = 6.0
 
     // Tableau des décalages spécifiques pour certaines phrases problématiques
     const decalagesSpecifiques: Record<string, number> = {
-      "Les informations que je vais partager avec vous sont incroyablement personnelles et pourraient bien vous surprendre.": 5.0,
-      // Ajouter d'autres phrases problématiques si nécessaire
+      "Les informations que je vais partager avec vous sont incroyablement personnelles et pourraient bien vous surprendre.": 8.0,
+      "La plupart des lecteurs sont choqués par la précision de ces révélations": 8.0,
+      "Si vous choisissez d'écouter, faites-le avec un esprit ouvert": 8.0,
+      "Je vais commencer par examiner votre nombre de l'âme": 8.0,
+      "Le nombre de l'âme, aussi appelée désir du cœur": 8.0,
+      // Ajouter d'autres phrases problématiques avec un décalage important
     }
 
     let charCount = 0
@@ -462,9 +466,9 @@ On se retrouve de l'autre côté.`
     // Calculer le temps écoulé depuis le début du segment actuel
     const elapsedTime = (Date.now() - segmentStartTime) / 1000
 
-    // Appliquer un décalage progressif qui augmente avec le temps
+    // Appliquer un décalage progressif beaucoup plus agressif qui augmente rapidement avec le temps
     // Plus le temps passe, plus on avance les sous-titres
-    const progressiveOffset = Math.min(5.0, 3.0 + (elapsedTime / 30) * 2.0)
+    const progressiveOffset = Math.min(10.0, 6.0 + (elapsedTime / 15) * 4.0)
 
     // Utiliser le temps ajusté pour la synchronisation des sous-titres
     const adjustedTime = elapsedTime + progressiveOffset
