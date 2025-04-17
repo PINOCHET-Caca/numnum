@@ -137,6 +137,7 @@ export default function AmeResultat() {
   const [audioStarted, setAudioStarted] = useState(false)
   const [tableKey, setTableKey] = useState(0) // Clé pour forcer le rendu du tableau
   const [tableForceRender, setTableForceRender] = useState(false) // État pour forcer le rendu du tableau
+  const [currentSegmentIndex, setCurrentSegmentIndex] = useState(0) // Nouvel état pour suivre le segment actuel
 
   // Ajouter un nouvel état pour contrôler l'affichage de l'animation des voyelles
   const [showVowelsAnimation, setShowVowelsAnimation] = useState(false)
@@ -152,6 +153,7 @@ export default function AmeResultat() {
   const pointsAncrageRef = useRef<PointAncrage[]>([])
   const audioStartTimeRef = useRef<number>(0)
   const forceUpdateTimerRef = useRef<NodeJS.Timeout | null>(null)
+  const sousTitresRef = useRef<string[]>([]) // Référence pour stocker tous les sous-titres
 
   // Fonction pour déterminer si un prénom est masculin ou féminin
   const determinerGenre = (prenom: string): "masculin" | "feminin" => {
@@ -409,6 +411,11 @@ On se retrouve de l'autre côté.`
   // Diviser le texte en segments courts (2 lignes max)
   const sousTitres = diviserEnSegmentsCourts(texteNarrationComplet)
 
+  // Stocker les sous-titres dans la référence pour y accéder partout
+  useEffect(() => {
+    sousTitresRef.current = sousTitres
+  }, [sousTitres])
+
   // Initialisation des points d'ancrage pour la synchronisation
   const initialiserPointsAncrage = () => {
     // Définir les points d'ancrage avec des temps approximatifs
@@ -486,52 +493,58 @@ On se retrouve de l'autre côté.`
     pointsAncrageRef.current = pointsAncrage
   }
 
-  // Fonction pour mettre à jour le sous-titre en fonction du temps écoulé
-  const updateSousTitre = () => {
-    if (!audioStarted) return
+  // Fonction pour jouer le segment audio suivant
+  const playNextSegment = (index) => {
+    if (!sousTitresRef.current || sousTitresRef.current.length === 0) return
 
-    // Calculer le temps écoulé depuis le début de l'audio
-    const tempsEcoule = (Date.now() - audioStartTimeRef.current) / 1000
+    // Mettre à jour l'index du segment actuel
+    setCurrentSegmentIndex(index)
+    currentSegmentIndexRef.current = index
 
-    // Vérifier les points d'ancrage
-    for (let i = 0; i < pointsAncrageRef.current.length; i++) {
-      const point = pointsAncrageRef.current[i]
-
-      // Si ce point d'ancrage correspond au temps actuel et n'a pas encore été affiché
-      if (!point.affichage && tempsEcoule >= point.tempsAudio) {
-        // Marquer ce point comme affiché
-        pointsAncrageRef.current[i].affichage = true
-
-        // Mettre à jour le sous-titre
-        setSousTitreActuel(point.texte)
-
-        // Exécuter les actions associées à ce point d'ancrage
-        if (point.actions) {
-          if (point.actions.showCircle !== undefined) setShowCircle(point.actions.showCircle)
-          if (point.actions.showTable !== undefined) setShowTable(point.actions.showTable)
-          if (point.actions.showVowelsAnimation !== undefined) setShowVowelsAnimation(point.actions.showVowelsAnimation)
-          if (point.actions.showNumberInCircle !== undefined) setShowNumberInCircle(point.actions.showNumberInCircle)
-          if (point.actions.forceTableRender) {
-            setTableKey((prev) => prev + 1)
-            setTableForceRender((prev) => !prev)
-          }
-        }
-
-        // Sortir de la boucle après avoir trouvé un point d'ancrage correspondant
-        return
-      }
+    // Afficher le sous-titre correspondant
+    if (index < sousTitresRef.current.length) {
+      setSousTitreActuel(sousTitresRef.current[index])
     }
 
-    // Si aucun point d'ancrage ne correspond, chercher le sous-titre le plus proche
-    // en fonction du temps écoulé (estimation basée sur la position dans le texte)
-    const totalDuree = 600 // Durée totale estimée en secondes
-    const positionRelative = tempsEcoule / totalDuree
-    const indexEstime = Math.floor(positionRelative * sousTitres.length)
-
-    // S'assurer que l'index est dans les limites
-    if (indexEstime >= 0 && indexEstime < sousTitres.length) {
-      setSousTitreActuel(sousTitres[indexEstime])
+    // Si nous avons atteint la fin des segments, arrêter
+    if (index >= sousTitresRef.current.length) {
+      console.log("Tous les segments audio ont été lus")
+      return
     }
+
+    console.log(`Lecture du segment ${index}/${sousTitresRef.current.length}`)
+
+    // Créer un nouvel élément audio pour ce segment
+    const audio = new Audio()
+
+    // Utiliser un segment de texte plus court pour l'API
+    const textToSend = sousTitresRef.current[index]
+
+    audio.src = `/api/speech?text=${encodeURIComponent(textToSend)}&segment=${index}&t=${Date.now()}`
+
+    // Stocker l'audio dans la référence
+    mainAudioRef.current = audio
+    audioSegmentsRef.current[index] = audio
+
+    // Configurer l'événement de fin pour passer au segment suivant
+    audio.onended = () => {
+      console.log(`Segment ${index} terminé, passage au suivant`)
+      playNextSegment(index + 1)
+    }
+
+    // Gérer les erreurs
+    audio.onerror = (e) => {
+      console.error(`Erreur lors de la lecture du segment ${index}:`, e)
+      // En cas d'erreur, passer au segment suivant après un court délai
+      setTimeout(() => playNextSegment(index + 1), 500)
+    }
+
+    // Démarrer la lecture
+    audio.play().catch((error) => {
+      console.error(`Erreur lors de la lecture du segment ${index}:`, error)
+      // En cas d'erreur, passer au segment suivant après un court délai
+      setTimeout(() => playNextSegment(index + 1), 500)
+    })
   }
 
   // Initialisation
@@ -592,97 +605,15 @@ On se retrouve de l'autre côté.`
       // Enregistrer le temps de début pour la synchronisation
       audioStartTimeRef.current = Date.now()
 
-      // Configurer l'intervalle pour mettre à jour les sous-titres
-      if (updateIntervalRef.current) {
-        clearInterval(updateIntervalRef.current)
+      // Afficher immédiatement le premier sous-titre
+      if (sousTitresRef.current && sousTitresRef.current.length > 0) {
+        setSousTitreActuel(sousTitresRef.current[0])
       }
-      updateIntervalRef.current = setInterval(updateSousTitre, 100)
 
-      // Prendre juste le début du texte pour commencer immédiatement
-      const premierSegment = texteNarrationComplet.substring(0, 500)
-      console.log("Lecture immédiate du premier segment")
-
-      // Créer un nouvel élément audio pour ce segment
-      const audio = new Audio()
-      audio.src = `/api/speech?text=${encodeURIComponent(premierSegment)}&segment=0&t=${Date.now()}&priority=high`
-
-      // Stocker l'audio dans la référence
-      mainAudioRef.current = audio
-
-      // Démarrer la lecture immédiatement
-      audio.play().catch((error) => {
-        console.error(`Erreur lors de la lecture immédiate:`, error)
-      })
-
-      // Pendant ce temps, préparer le reste du texte
-      setTimeout(() => {
-        // Diviser le reste du texte en segments plus petits
-        const maxChars = 500 // Segments plus petits pour un chargement plus rapide
-        const segments = []
-        let currentSegment = ""
-
-        // Commencer à partir du deuxième segment
-        const resteTexte = texteNarrationComplet.substring(500)
-
-        // Diviser le texte en respectant les phrases
-        const phrases = resteTexte.split(/(?<=[.!?])\s+/)
-        for (const phrase of phrases) {
-          if ((currentSegment + phrase).length <= maxChars) {
-            currentSegment += (currentSegment ? " " : "") + phrase
-          } else {
-            if (currentSegment) {
-              segments.push(currentSegment)
-            }
-            currentSegment = phrase
-          }
-        }
-        if (currentSegment) {
-          segments.push(currentSegment)
-        }
-
-        console.log(`Reste du texte divisé en ${segments.length} segments`)
-
-        // Fonction pour jouer les segments audio en séquence
-        const playNextSegment = (index) => {
-          if (index >= segments.length) {
-            console.log("Tous les segments audio ont été lus")
-            return
-          }
-
-          console.log(`Lecture du segment ${index + 1}/${segments.length}`)
-
-          // Créer un nouvel élément audio pour ce segment
-          const nextAudio = new Audio()
-          nextAudio.src = `/api/speech?text=${encodeURIComponent(segments[index])}&segment=${index + 1}&t=${Date.now()}`
-
-          // Stocker l'audio dans la référence
-          mainAudioRef.current = nextAudio
-
-          // Configurer l'événement de fin pour passer au segment suivant
-          nextAudio.onended = () => {
-            playNextSegment(index + 1)
-          }
-
-          // Gérer les erreurs
-          nextAudio.onerror = () => {
-            console.error(`Erreur lors de la lecture du segment ${index + 1}`)
-            playNextSegment(index + 1)
-          }
-
-          // Démarrer la lecture
-          nextAudio.play().catch((error) => {
-            console.error(`Erreur lors de la lecture du segment ${index + 1}:`, error)
-            playNextSegment(index + 1)
-          })
-        }
-
-        // Configurer l'événement de fin pour le premier segment
-        audio.onended = () => {
-          playNextSegment(0)
-        }
-      }, 100) // Très court délai pour permettre au premier segment de commencer
+      // Commencer à jouer le premier segment immédiatement
+      playNextSegment(0)
     }
-  }, [isLoading, mounted, audioStarted, texteNarrationComplet])
+  }, [isLoading, mounted, audioStarted])
 
   // Gestion du son de fond
   const toggleMute = () => {
