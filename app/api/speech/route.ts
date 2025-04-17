@@ -13,7 +13,7 @@ export async function GET(request: NextRequest) {
     const segment = searchParams.get("segment") || "0"
 
     // Réduire la taille max pour des réponses plus rapides
-    const MAX_TEXT_LENGTH = priority === "high" ? 500 : 1500
+    const MAX_TEXT_LENGTH = priority === "high" ? 200 : 500
 
     console.log(
       `Traitement du segment ${segment} avec ${text?.length || 0} caractères (priorité: ${priority || "normale"})`,
@@ -64,7 +64,7 @@ export async function GET(request: NextRequest) {
       console.log(`Appel de l'API Azure Speech pour le segment ${segment}...`)
 
       // Timeout réduit pour les requêtes prioritaires
-      const timeoutDuration = priority === "high" ? 10000 : 30000
+      const timeoutDuration = priority === "high" ? 5000 : 15000
 
       // Créer un contrôleur d'abandon pour limiter le temps d'attente
       const controller = new AbortController()
@@ -76,7 +76,7 @@ export async function GET(request: NextRequest) {
         headers: {
           "Ocp-Apim-Subscription-Key": speechKey,
           "Content-Type": "application/ssml+xml",
-          "X-Microsoft-OutputFormat": "audio-16khz-64kbitrate-mono-mp3", // Qualité réduite pour une réponse plus rapide
+          "X-Microsoft-OutputFormat": "audio-16khz-32kbitrate-mono-mp3", // Qualité réduite pour une réponse plus rapide
           "User-Agent": "Numerologist",
         },
         body: ssml,

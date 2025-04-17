@@ -137,6 +137,7 @@ export default function AmeResultat() {
   const [audioStarted, setAudioStarted] = useState(false)
   const [tableKey, setTableKey] = useState(0) // Clé pour forcer le rendu du tableau
   const [tableForceRender, setTableForceRender] = useState(false) // État pour forcer le rendu du tableau
+  const [currentSousTitreIndex, setCurrentSousTitreIndex] = useState(0) // Nouvel état pour suivre l'index du sous-titre actuel
 
   // Ajouter un nouvel état pour contrôler l'affichage de l'animation des voyelles
   const [showVowelsAnimation, setShowVowelsAnimation] = useState(false)
@@ -152,6 +153,9 @@ export default function AmeResultat() {
   const pointsAncrageRef = useRef<PointAncrage[]>([])
   const audioStartTimeRef = useRef<number>(0)
   const forceUpdateTimerRef = useRef<NodeJS.Timeout | null>(null)
+  const sousTitresRef = useRef<string[]>([]) // Référence pour stocker les sous-titres
+  const lastSousTitreUpdateRef = useRef<number>(0) // Pour suivre la dernière mise à jour des sous-titres
+  const audioErrorCountRef = useRef<number>(0) // Pour compter les erreurs audio
 
   // Fonction pour déterminer si un prénom est masculin ou féminin
   const determinerGenre = (prenom: string): "masculin" | "feminin" => {
@@ -409,6 +413,11 @@ On se retrouve de l'autre côté.`
   // Diviser le texte en segments courts (2 lignes max)
   const sousTitres = diviserEnSegmentsCourts(texteNarrationComplet)
 
+  // Stocker les sous-titres dans la référence pour y accéder partout
+  useEffect(() => {
+    sousTitresRef.current = sousTitres
+  }, [sousTitres])
+
   // Initialisation des points d'ancrage pour la synchronisation
   const initialiserPointsAncrage = () => {
     // Définir les points d'ancrage avec des temps approximatifs
@@ -486,13 +495,58 @@ On se retrouve de l'autre côté.`
     pointsAncrageRef.current = pointsAncrage
   }
 
+  // Fonction pour avancer automatiquement les sous-titres
+  const avancerSousTitresAutomatiquement = () => {
+    // Si aucun sous-titre n'est affiché, afficher le premier
+    if (!sousTitreActuel && sousTitresRef.current.length > 0) {
+      setSousTitreActuel(sousTitresRef.current[0])
+      setCurrentSousTitreIndex(0)
+      return
+    }
+
+    // Si le dernier sous-titre a été affiché il y a plus de 5 secondes, passer au suivant
+    const maintenant = Date.now()
+    if (maintenant - lastSousTitreUpdateRef.current > 5000) {
+      const prochainIndex = currentSousTitreIndex + 1
+      if (prochainIndex < sousTitresRef.current.length) {
+        setSousTitreActuel(sousTitresRef.current[prochainIndex])
+        setCurrentSousTitreIndex(prochainIndex)
+        lastSousTitreUpdateRef.current = maintenant
+
+        // Vérifier si ce sous-titre correspond à un point d'ancrage
+        const pointAncrage = pointsAncrageRef.current.find((p) => p.texte === sousTitresRef.current[prochainIndex])
+        if (pointAncrage && pointAncrage.actions) {
+          if (pointAncrage.actions.showCircle !== undefined) setShowCircle(pointAncrage.actions.showCircle)
+          if (pointAncrage.actions.showTable !== undefined) setShowTable(pointAncrage.actions.showTable)
+          if (pointAncrage.actions.showVowelsAnimation !== undefined)
+            setShowVowelsAnimation(pointAncrage.actions.showVowelsAnimation)
+          if (pointAncrage.actions.showNumberInCircle !== undefined)
+            setShowNumberInCircle(pointAncrage.actions.showNumberInCircle)
+          if (pointAncrage.actions.forceTableRender) {
+            setTableKey((prev) => prev + 1)
+            setTableForceRender((prev) => !prev)
+          }
+        }
+      }
+    }
+  }
+
   // Fonction pour mettre à jour le sous-titre en fonction du temps écoulé
   const updateSousTitre = () => {
     // Même si l'audio n'a pas commencé, afficher le premier sous-titre immédiatement
     if (!audioStarted) {
-      if (sousTitres.length > 0 && !sousTitreActuel) {
-        setSousTitreActuel(sousTitres[0])
+      if (sousTitresRef.current.length > 0 && !sousTitreActuel) {
+        setSousTitreActuel(sousTitresRef.current[0])
+        setCurrentSousTitreIndex(0)
+        lastSousTitreUpdateRef.current = Date.now()
       }
+      return
+    }
+
+    // Vérifier si l'audio est en cours de lecture
+    if (mainAudioRef.current && mainAudioRef.current.paused) {
+      // Si l'audio est en pause, avancer automatiquement les sous-titres
+      avancerSousTitresAutomatiquement()
       return
     }
 
@@ -511,6 +565,14 @@ On se retrouve de l'autre côté.`
 
         // Mettre à jour le sous-titre
         setSousTitreActuel(point.texte)
+
+        // Trouver l'index de ce sous-titre dans la liste complète
+        const index = sousTitresRef.current.findIndex((st) => st === point.texte)
+        if (index !== -1) {
+          setCurrentSousTitreIndex(index)
+        }
+
+        lastSousTitreUpdateRef.current = Date.now()
 
         // Exécuter les actions associées à ce point d'ancrage
         if (point.actions) {
@@ -533,11 +595,16 @@ On se retrouve de l'autre côté.`
     // en fonction du temps écoulé (estimation basée sur la position dans le texte)
     const totalDuree = 600 // Durée totale estimée en secondes
     const positionRelative = tempsEcoule / totalDuree
-    const indexEstime = Math.floor(positionRelative * sousTitres.length)
+    const indexEstime = Math.floor(positionRelative * sousTitresRef.current.length)
 
-    // S'assurer que l'index est dans les limites
-    if (indexEstime >= 0 && indexEstime < sousTitres.length) {
-      setSousTitreActuel(sousTitres[indexEstime])
+    // S'assurer que l'index est dans les limites et qu'il est différent de l'index actuel
+    if (indexEstime >= 0 && indexEstime < sousTitresRef.current.length && indexEstime !== currentSousTitreIndex) {
+      setSousTitreActuel(sousTitresRef.current[indexEstime])
+      setCurrentSousTitreIndex(indexEstime)
+      lastSousTitreUpdateRef.current = Date.now()
+    } else {
+      // Si aucun nouveau sous-titre n'a été trouvé, vérifier si on doit avancer automatiquement
+      avancerSousTitresAutomatiquement()
     }
   }
 
@@ -594,8 +661,10 @@ On se retrouve de l'autre côté.`
   useEffect(() => {
     if (!isLoading && mounted && !audioStarted) {
       // Afficher immédiatement le premier sous-titre
-      if (sousTitres.length > 0) {
-        setSousTitreActuel(sousTitres[0])
+      if (sousTitresRef.current.length > 0) {
+        setSousTitreActuel(sousTitresRef.current[0])
+        setCurrentSousTitreIndex(0)
+        lastSousTitreUpdateRef.current = Date.now()
       }
 
       setAudioStarted(true)
@@ -609,10 +678,10 @@ On se retrouve de l'autre côté.`
         clearInterval(updateIntervalRef.current)
       }
       // Mettre à jour les sous-titres plus fréquemment pour une meilleure synchronisation
-      updateIntervalRef.current = setInterval(updateSousTitre, 100)
+      updateIntervalRef.current = setInterval(updateSousTitre, 1000)
 
       // Prendre juste le début du texte pour commencer immédiatement - texte plus court pour un chargement ultra rapide
-      const premierSegment = texteNarrationComplet.substring(0, 200)
+      const premierSegment = texteNarrationComplet.substring(0, 150) // Réduire encore plus pour un chargement plus rapide
       console.log("Lecture immédiate du premier segment (ultra court)")
 
       // Créer un nouvel élément audio pour ce segment
@@ -629,10 +698,19 @@ On se retrouve de l'autre côté.`
       const retryPlay = (retries = 3) => {
         audio.play().catch((error) => {
           console.error(`Erreur lors de la lecture immédiate (essai ${4 - retries}/3):`, error)
+          audioErrorCountRef.current++
+
           if (retries > 0) {
             setTimeout(() => retryPlay(retries - 1), 500)
           } else {
             console.error("Impossible de démarrer l'audio après plusieurs tentatives")
+            // Même en cas d'échec, continuer à avancer les sous-titres
+            // Configurer un intervalle pour avancer automatiquement les sous-titres
+            if (updateIntervalRef.current) {
+              clearInterval(updateIntervalRef.current)
+            }
+            updateIntervalRef.current = setInterval(avancerSousTitresAutomatiquement, 5000)
+
             // Passer quand même au préchargement du reste du texte
             prepareNextSegments()
           }
@@ -645,12 +723,12 @@ On se retrouve de l'autre côté.`
       // Fonction pour préparer les segments suivants
       const prepareNextSegments = () => {
         // Diviser le reste du texte en segments plus petits pour un chargement plus rapide
-        const maxChars = 300 // Segments plus petits pour un chargement plus rapide
+        const maxChars = 200 // Segments encore plus petits pour un chargement plus rapide
         const segments = []
         let currentSegment = ""
 
-        // Commencer à partir du deuxième segment (après les 200 premiers caractères)
-        const resteTexte = texteNarrationComplet.substring(200)
+        // Commencer à partir du deuxième segment (après les 150 premiers caractères)
+        const resteTexte = texteNarrationComplet.substring(150)
 
         // Diviser le texte en respectant les phrases
         const phrases = resteTexte.split(/(?<=[.!?])\s+/)
@@ -670,8 +748,8 @@ On se retrouve de l'autre côté.`
 
         console.log(`Reste du texte divisé en ${segments.length} segments plus petits pour chargement rapide`)
 
-        // Précharger les 3 premiers segments en parallèle
-        const preloadFirstSegments = Math.min(3, segments.length)
+        // Précharger les 2 premiers segments en parallèle
+        const preloadFirstSegments = Math.min(2, segments.length)
         for (let i = 0; i < preloadFirstSegments; i++) {
           const preloadAudio = new Audio()
           preloadAudio.src = `/api/speech?text=${encodeURIComponent(segments[i])}&segment=${i + 1}&t=${Date.now()}`
@@ -711,10 +789,18 @@ On se retrouve de l'autre côté.`
           const retrySegmentPlay = (retries = 2) => {
             nextAudio.play().catch((error) => {
               console.error(`Erreur lors de la lecture du segment ${index + 1}:`, error)
+              audioErrorCountRef.current++
+
               if (retries > 0) {
                 setTimeout(() => retrySegmentPlay(retries - 1), 1000)
               } else {
                 console.error(`Abandon de la lecture du segment ${index + 1} après échecs`)
+                // Même en cas d'échec, continuer à avancer les sous-titres
+                if (audioErrorCountRef.current > 3 && updateIntervalRef.current) {
+                  // Si trop d'erreurs, passer en mode sous-titres automatiques
+                  clearInterval(updateIntervalRef.current)
+                  updateIntervalRef.current = setInterval(avancerSousTitresAutomatiquement, 5000)
+                }
                 playNextSegment(index + 1) // Passer au suivant malgré l'échec
               }
             })
@@ -733,7 +819,7 @@ On se retrouve de l'autre côté.`
       // Démarrer le préchargement après un court délai
       setTimeout(prepareNextSegments, 100)
     }
-  }, [isLoading, mounted, audioStarted, texteNarrationComplet, sousTitres])
+  }, [isLoading, mounted, audioStarted, texteNarrationComplet])
 
   // Gestion du son de fond
   const toggleMute = () => {
