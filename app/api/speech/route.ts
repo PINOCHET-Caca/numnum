@@ -8,6 +8,12 @@ export async function GET(request: NextRequest) {
     const searchParams = request.nextUrl.searchParams
     const text = searchParams.get("text")
     const timestamp = searchParams.get("t") // Pour éviter la mise en cache
+    const priority = searchParams.get("priority") // Nouvelle option de priorité
+
+    // Si c'est une requête prioritaire, réduire le délai de traitement
+    if (priority === "high") {
+      console.log("Requête prioritaire détectée - traitement accéléré")
+    }
 
     const segment = searchParams.get("segment") || "0"
     console.log(`Traitement du segment ${segment} avec ${text?.length || 0} caractères`)

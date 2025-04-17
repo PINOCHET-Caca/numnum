@@ -587,30 +587,7 @@ On se retrouve de l'autre côté.`
   useEffect(() => {
     if (!isLoading && mounted && !audioStarted) {
       setAudioStarted(true)
-      console.log("Préchargement de l'audio...")
-
-      // Diviser le texte en segments plus petits pour éviter les limites de l'API
-      const maxChars = 1000 // Limite de caractères par requête
-      const segments = []
-      let currentSegment = ""
-
-      // Diviser le texte en respectant les phrases
-      const phrases = texteNarrationComplet.split(/(?<=[.!?])\s+/)
-      for (const phrase of phrases) {
-        if ((currentSegment + phrase).length <= maxChars) {
-          currentSegment += (currentSegment ? " " : "") + phrase
-        } else {
-          if (currentSegment) {
-            segments.push(currentSegment)
-          }
-          currentSegment = phrase
-        }
-      }
-      if (currentSegment) {
-        segments.push(currentSegment)
-      }
-
-      console.log(`Texte divisé en ${segments.length} segments pour la synthèse vocale`)
+      console.log("Démarrage immédiat de l'audio...")
 
       // Enregistrer le temps de début pour la synchronisation
       audioStartTimeRef.current = Date.now()
@@ -621,72 +598,89 @@ On se retrouve de l'autre côté.`
       }
       updateIntervalRef.current = setInterval(updateSousTitre, 100)
 
-      // Forcer l'affichage de certains sous-titres à des moments précis
-      // Cela sert de mécanisme de secours au cas où la synchronisation normale échouerait
-      const forcerSousTitres = () => {
-        const tempsEcoule = (Date.now() - audioStartTimeRef.current) / 1000
+      // Prendre juste le début du texte pour commencer immédiatement
+      const premierSegment = texteNarrationComplet.substring(0, 500)
+      console.log("Lecture immédiate du premier segment")
 
-        // Forcer l'affichage de la phrase spécifique après 100 secondes
-        if (tempsEcoule >= 100 && tempsEcoule < 110) {
-          setSousTitreActuel("Vous êtes intuitif, puissant et pragmatique.")
-          setShowVowelsAnimation(false)
-          setShowCircle(true)
-          setShowTable(false)
-          setShowNumberInCircle(false)
-        }
+      // Créer un nouvel élément audio pour ce segment
+      const audio = new Audio()
+      audio.src = `/api/speech?text=${encodeURIComponent(premierSegment)}&segment=0&t=${Date.now()}&priority=high`
 
-        // Planifier la prochaine vérification
-        forceUpdateTimerRef.current = setTimeout(forcerSousTitres, 5000)
-      }
+      // Stocker l'audio dans la référence
+      mainAudioRef.current = audio
 
-      // Démarrer le mécanisme de secours
-      forcerSousTitres()
+      // Démarrer la lecture immédiatement
+      audio.play().catch((error) => {
+        console.error(`Erreur lors de la lecture immédiate:`, error)
+      })
 
-      // Fonction pour jouer les segments audio en séquence
-      const playNextSegment = (index) => {
-        if (index >= segments.length) {
-          console.log("Tous les segments audio ont été lus")
-          if (updateIntervalRef.current) {
-            clearInterval(updateIntervalRef.current)
+      // Pendant ce temps, préparer le reste du texte
+      setTimeout(() => {
+        // Diviser le reste du texte en segments plus petits
+        const maxChars = 500 // Segments plus petits pour un chargement plus rapide
+        const segments = []
+        let currentSegment = ""
+
+        // Commencer à partir du deuxième segment
+        const resteTexte = texteNarrationComplet.substring(500)
+
+        // Diviser le texte en respectant les phrases
+        const phrases = resteTexte.split(/(?<=[.!?])\s+/)
+        for (const phrase of phrases) {
+          if ((currentSegment + phrase).length <= maxChars) {
+            currentSegment += (currentSegment ? " " : "") + phrase
+          } else {
+            if (currentSegment) {
+              segments.push(currentSegment)
+            }
+            currentSegment = phrase
           }
-          return
+        }
+        if (currentSegment) {
+          segments.push(currentSegment)
         }
 
-        console.log(`Lecture du segment ${index}/${segments.length}`)
+        console.log(`Reste du texte divisé en ${segments.length} segments`)
 
-        // Enregistrer le temps de début de ce segment
-        segmentStartTimesRef.current[index] = Date.now()
+        // Fonction pour jouer les segments audio en séquence
+        const playNextSegment = (index) => {
+          if (index >= segments.length) {
+            console.log("Tous les segments audio ont été lus")
+            return
+          }
 
-        // Créer un nouvel élément audio pour ce segment
-        const audio = new Audio()
-        audio.src = `/api/speech?text=${encodeURIComponent(segments[index])}&segment=${index}&t=${Date.now()}`
+          console.log(`Lecture du segment ${index + 1}/${segments.length}`)
 
-        // Stocker l'audio dans la référence
-        mainAudioRef.current = audio
-        audioSegmentsRef.current[index] = audio
-        currentSegmentIndexRef.current = index
+          // Créer un nouvel élément audio pour ce segment
+          const nextAudio = new Audio()
+          nextAudio.src = `/api/speech?text=${encodeURIComponent(segments[index])}&segment=${index + 1}&t=${Date.now()}`
 
-        // Configurer l'événement de fin pour passer au segment suivant
+          // Stocker l'audio dans la référence
+          mainAudioRef.current = nextAudio
+
+          // Configurer l'événement de fin pour passer au segment suivant
+          nextAudio.onended = () => {
+            playNextSegment(index + 1)
+          }
+
+          // Gérer les erreurs
+          nextAudio.onerror = () => {
+            console.error(`Erreur lors de la lecture du segment ${index + 1}`)
+            playNextSegment(index + 1)
+          }
+
+          // Démarrer la lecture
+          nextAudio.play().catch((error) => {
+            console.error(`Erreur lors de la lecture du segment ${index + 1}:`, error)
+            playNextSegment(index + 1)
+          })
+        }
+
+        // Configurer l'événement de fin pour le premier segment
         audio.onended = () => {
-          console.log(`Segment ${index} terminé, passage au suivant`)
-          playNextSegment(index + 1)
+          playNextSegment(0)
         }
-
-        // Gérer les erreurs
-        audio.onerror = () => {
-          console.error(`Erreur lors de la lecture du segment ${index}`)
-          playNextSegment(index + 1)
-        }
-
-        // Démarrer la lecture
-        audio.play().catch((error) => {
-          console.error(`Erreur lors de la lecture du segment ${index}:`, error)
-          playNextSegment(index + 1)
-        })
-      }
-
-      // Démarrer la lecture du premier segment immédiatement
-      playNextSegment(0)
+      }, 100) // Très court délai pour permettre au premier segment de commencer
     }
   }, [isLoading, mounted, audioStarted, texteNarrationComplet])
 
