@@ -51,16 +51,11 @@ export async function GET(request: NextRequest) {
     // Remplacer "lanumerologie.co" par "la numérologie point co" pour la prononciation
     textToSpeech = textToSpeech.replace(/lanumerologie\.co/g, "la numérologie point co")
 
-    // Ajuster le SSML pour une synthèse plus rapide avec une priorité élevée
-    const rate = priority === "high" ? "1.1" : "1.0" // Vitesse légèrement plus élevée pour le premier segment
-
-    // Construire le SSML avec la vitesse ajustée
+    // Construire le SSML
     const ssml = `
       <speak version='1.0' xml:lang='fr-FR'>
         <voice xml:lang='fr-FR' xml:gender='Female' name='fr-FR-VivienneNeural'>
-          <prosody rate="${rate}">
-            ${textToSpeech}
-          </prosody>
+          ${textToSpeech}
         </voice>
       </speak>
     `
