@@ -1,5 +1,6 @@
 import { type NextRequest, NextResponse } from "next/server"
 
+// Optimiser la route API pour accélérer la réponse et réduire la latence
 export async function GET(request: NextRequest) {
   try {
     console.log("Requête de synthèse vocale reçue")
@@ -9,24 +10,33 @@ export async function GET(request: NextRequest) {
     const text = searchParams.get("text")
     const timestamp = searchParams.get("t") // Pour éviter la mise en cache
     const priority = searchParams.get("priority") // Nouvelle option de priorité
-
-    // Si c'est une requête prioritaire, réduire le délai de traitement
-    if (priority === "high") {
-      console.log("Requête prioritaire détectée - traitement accéléré")
-    }
-
     const segment = searchParams.get("segment") || "0"
-    console.log(`Traitement du segment ${segment} avec ${text?.length || 0} caractères`)
+
+    // Réduire la taille max pour des réponses plus rapides
+    const MAX_TEXT_LENGTH = priority === "high" ? 500 : 1500
+
+    console.log(
+      `Traitement du segment ${segment} avec ${text?.length || 0} caractères (priorité: ${priority || "normale"})`,
+    )
 
     if (!text) {
       console.error("Paramètre text manquant")
       return NextResponse.json({ error: "Le paramètre text est requis" }, { status: 400 })
     }
 
-    // Vérifier si le texte n'est pas trop long
-    if (text.length > 5000) {
-      console.error(`Texte trop long: ${text.length} caractères`)
-      return NextResponse.json({ error: "Le texte est trop long (max 5000 caractères)" }, { status: 400 })
+    // Tronquer le texte s'il est trop long pour une réponse plus rapide
+    let textToSpeech = text
+    if (text.length > MAX_TEXT_LENGTH) {
+      console.log(`Texte tronqué de ${text.length} à ${MAX_TEXT_LENGTH} caractères pour performance`)
+      textToSpeech = text.substring(0, MAX_TEXT_LENGTH)
+      // Essayer de couper à un point ou une virgule pour une phrase plus naturelle
+      const lastPeriod = textToSpeech.lastIndexOf(".")
+      const lastComma = textToSpeech.lastIndexOf(",")
+      const cutPoint = Math.max(lastPeriod, lastComma)
+      if (cutPoint > MAX_TEXT_LENGTH * 0.7) {
+        // Couper seulement si on est assez avancé dans le texte
+        textToSpeech = textToSpeech.substring(0, cutPoint + 1)
+      }
     }
 
     // Récupérer les clés d'API Azure Speech
@@ -38,39 +48,50 @@ export async function GET(request: NextRequest) {
       return NextResponse.json({ error: "Configuration du service de synthèse vocale manquante" }, { status: 500 })
     }
 
-    console.log(`Clés API Azure Speech trouvées, région: ${speechRegion}`)
-
-    // Préparer le texte pour la synthèse vocale (remplacer certains textes pour une meilleure prononciation)
-    let textToSpeech = text
-
     // Remplacer "lanumerologie.co" par "la numérologie point co" pour la prononciation
     textToSpeech = textToSpeech.replace(/lanumerologie\.co/g, "la numérologie point co")
 
-    // Construire le SSML
+    // Ajuster le SSML pour une synthèse plus rapide avec une priorité élevée
+    const rate = priority === "high" ? "1.1" : "1.0" // Vitesse légèrement plus élevée pour le premier segment
+
+    // Construire le SSML avec la vitesse ajustée
     const ssml = `
       <speak version='1.0' xml:lang='fr-FR'>
         <voice xml:lang='fr-FR' xml:gender='Female' name='fr-FR-VivienneNeural'>
-          ${textToSpeech}
+          <prosody rate="${rate}">
+            ${textToSpeech}
+          </prosody>
         </voice>
       </speak>
     `
 
     try {
-      console.log("Appel de l'API Azure Speech...")
+      console.log(`Appel de l'API Azure Speech pour le segment ${segment}...`)
 
-      // Appeler l'API Azure Speech
+      // Timeout réduit pour les requêtes prioritaires
+      const timeoutDuration = priority === "high" ? 10000 : 30000
+
+      // Créer un contrôleur d'abandon pour limiter le temps d'attente
+      const controller = new AbortController()
+      const timeoutId = setTimeout(() => controller.abort(), timeoutDuration)
+
+      // Appeler l'API Azure Speech avec un timeout
       const response = await fetch(`https://${speechRegion}.tts.speech.microsoft.com/cognitiveservices/v1`, {
         method: "POST",
         headers: {
           "Ocp-Apim-Subscription-Key": speechKey,
           "Content-Type": "application/ssml+xml",
-          "X-Microsoft-OutputFormat": "audio-16khz-128kbitrate-mono-mp3",
+          "X-Microsoft-OutputFormat": "audio-16khz-64kbitrate-mono-mp3", // Qualité réduite pour une réponse plus rapide
           "User-Agent": "Numerologist",
         },
         body: ssml,
+        signal: controller.signal,
       })
 
-      console.log(`Réponse de l'API Azure: ${response.status} ${response.statusText}`)
+      // Nettoyer le timeout
+      clearTimeout(timeoutId)
+
+      console.log(`Réponse de l'API Azure: ${response.status} ${response.statusText} pour segment ${segment}`)
 
       if (!response.ok) {
         console.error(`Erreur API Azure Speech: ${response.status} ${response.statusText}`)
@@ -82,7 +103,7 @@ export async function GET(request: NextRequest) {
 
       // Récupérer les données audio
       const audioData = await response.arrayBuffer()
-      console.log(`Audio généré avec succès, taille: ${audioData.byteLength} octets`)
+      console.log(`Audio généré avec succès, taille: ${audioData.byteLength} octets pour segment ${segment}`)
 
       // Retourner l'audio avec des en-têtes de cache optimisés
       return new NextResponse(audioData, {
@@ -94,6 +115,12 @@ export async function GET(request: NextRequest) {
         },
       })
     } catch (error) {
+      // Vérifier si l'erreur est due à un timeout
+      if (error instanceof Error && error.name === "AbortError") {
+        console.error(`Timeout lors de l'appel à l'API Azure pour le segment ${segment}`)
+        return NextResponse.json({ error: "Délai d'attente dépassé pour la synthèse vocale" }, { status: 504 })
+      }
+
       console.error("Erreur lors de l'appel à l'API Azure:", error)
       return NextResponse.json(
         {
